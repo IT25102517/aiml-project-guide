@@ -14,6 +14,7 @@ interface ScreenshotUploaderProps {
   stepNumber: number;
   stepName: string;
   existingScreenshots?: Screenshot[];
+  onUploaded?: (shot: Screenshot & {step_id:number; step_name:string}) => void;
 }
 
 export default function ScreenshotUploader({
@@ -22,6 +23,7 @@ export default function ScreenshotUploader({
   stepNumber,
   stepName,
   existingScreenshots = [],
+  onUploaded,
 }: ScreenshotUploaderProps) {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -60,6 +62,7 @@ export default function ScreenshotUploader({
 
   const handleUpload = async () => {
     if (!file) return;
+    if (file.size > 10 * 1024 * 1024) { setUploadStatus('error'); setErrorMessage('Choose an image smaller than 10 MB.'); return; }
 
     setIsUploading(true);
     setUploadStatus('idle');
@@ -82,7 +85,12 @@ export default function ScreenshotUploader({
         throw new Error('Upload failed');
       }
 
+      const data = await response.json();
+      if (!data.success || !data.url) throw new Error('Upload was not confirmed');
+      onUploaded?.({step_id:stepNumber, step_name:stepName, file_name:data.file_name, pinata_url:data.url, uploaded_at:new Date().toISOString()});
       setUploadStatus('success');
+      if (preview) URL.revokeObjectURL(preview);
+      setPreview(null);
       setFile(null);
     } catch (err) {
       console.error(err);

@@ -1,0 +1,926 @@
+[
+  {
+    "modelId": "ridge",
+    "modelName": "Ridge Regression",
+    "modelDescription": "A linear price model whose L2 penalty limits large coefficients.",
+    "algorithmType": "Regularized linear regression",
+    "memberId": "amarasekara",
+    "memberName": "Amarasekara I.S.Y.",
+    "studentId": "IT25101702",
+    "steps": [
+      {
+        "stepNumber": 1,
+        "title": "Load the data",
+        "code": "# Import libraries\nimport numpy as np\nimport pandas as pd\nimport matplotlib.pyplot as plt\nfrom sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score\n\n# Load training, validation and test data\ntuning_train = pd.read_csv('tuning_train.csv')\nvalidation = pd.read_csv('tuning_validation.csv')\ntrain = pd.read_csv('processed_train.csv')\ntest = pd.read_csv('processed_holdout.csv')\n\n# Check the number of rows and columns\nprint(tuning_train.shape)\nprint(validation.shape)\nprint(train.shape)\nprint(test.shape)\n\nfrom sklearn.linear_model import Ridge",
+        "approach": "Upload the five CSV files from the starter ZIP to Colab. Run the cells in order.",
+        "whatToLookFor": [
+          "Tuning training: (3578, 14). Validation: (1199, 14).",
+          "Full training: (4777, 14). Labelled test: (1194, 14)."
+        ],
+        "technicalNotes": "tuning_train.csv and tuning_validation.csv are an extra split within the original training portion. They use development-training medians and scaling only. processed_train.csv and processed_holdout.csv are the existing Assignment 1 files. processed_university_test.csv is used for prediction at the end.",
+        "commonMistakes": [
+          "Do not split the combined processed archive again.",
+          "Keep all members on the same starter files."
+        ],
+        "screenshotInstructions": "Capture the four dataset shapes."
+      },
+      {
+        "stepNumber": 2,
+        "title": "Separate inputs and prices",
+        "code": "# Separate features and targets for tuning\nX_train = tuning_train.drop(columns=['Price', 'Log_Price'])\ny_train = tuning_train['Price']\ny_train_log = tuning_train['Log_Price']\n\n# Prepare the validation set\nX_val = validation.drop(columns=['Price', 'Log_Price'])\ny_val = validation['Price']\n\n# Prepare the full training set for the selected model\nX_final = train.drop(columns=['Price', 'Log_Price'])\ny_final = train['Price']\ny_final_log = train['Log_Price']\n\n# Prepare the labelled test set\nX_test = test.drop(columns=['Price', 'Log_Price'])\ny_test = test['Price']\n\nprint(X_train.shape)\nprint(X_val.shape)\nprint(X_test.shape)",
+        "approach": "X contains the car features, and y contains the price being predicted. Keep both Price and Log_Price out of X. The two target choices let you compare a preprocessing variation without changing the original 12 features.",
+        "whatToLookFor": [
+          "Each X table has 12 columns.",
+          "Development training and validation are used for choosing a variant. The labelled test stays unused until Step 5."
+        ],
+        "technicalNotes": "Log_Price was created with np.log1p(Price). For a log-target model, np.expm1(prediction) returns its prediction to the price scale. RMSE and MAE are always calculated on that price scale.",
+        "commonMistakes": [
+          "Including Price or Log_Price in X leaks the answer.",
+          "Do not apply another scaler to already processed features."
+        ],
+        "screenshotInstructions": "Capture the input shapes."
+      },
+      {
+        "stepNumber": 3,
+        "title": "Train the two baseline variants",
+        "code": "# Train with default settings using prices\nmodel1 = Ridge()\nmodel1.fit(X_train, y_train)\n\n# Predict validation prices\nprediction1 = model1.predict(X_val)\n\n# Calculate validation scores\nrmse1 = np.sqrt(mean_squared_error(y_val, prediction1))\nmae1 = mean_absolute_error(y_val, prediction1)\nr2_1 = r2_score(y_val, prediction1)\nprint('Default + Price:', rmse1, mae1, r2_1)\n\n# Train with default settings using log prices\nmodel2 = Ridge()\nmodel2.fit(X_train, y_train_log)\n\n# Predict validation prices and reverse the log transformation\nprediction2 = np.expm1(model2.predict(X_val))\n\n# Calculate validation scores\nrmse2 = np.sqrt(mean_squared_error(y_val, prediction2))\nmae2 = mean_absolute_error(y_val, prediction2)\nr2_2 = r2_score(y_val, prediction2)\nprint('Default + Log_Price:', rmse2, mae2, r2_2)",
+        "approach": "Ridge combines the features using learned weights. Its alpha penalty discourages very large weights, which can stabilize predictions when engine size and power are correlated.\n\nmodel1 uses Price. model2 uses Log_Price. Both use default parameter settings and the same development-training rows. The code trains, predicts and calculates RMSE, MAE and R² directly.",
+        "whatToLookFor": [
+          "Two lines show validation RMSE, MAE and R², in that order.",
+          "Lower RMSE and MAE are better. Higher R² is better."
+        ],
+        "technicalNotes": "fit(X, y) trains the estimator. predict(X_val) estimates validation prices. np.sqrt(mean_squared_error(...)) calculates RMSE. Log predictions are reversed before scoring.",
+        "commonMistakes": [
+          "Do not score log predictions directly against prices.",
+          "R² is not classification accuracy."
+        ],
+        "screenshotInstructions": "Capture both baseline scores."
+      },
+      {
+        "stepNumber": 4,
+        "title": "Try changed settings and compare",
+        "code": "# Train with changed settings using prices\nmodel3 = Ridge(alpha=10)\nmodel3.fit(X_train, y_train)\n\n# Predict validation prices\nprediction3 = model3.predict(X_val)\n\n# Calculate validation scores\nrmse3 = np.sqrt(mean_squared_error(y_val, prediction3))\nmae3 = mean_absolute_error(y_val, prediction3)\nr2_3 = r2_score(y_val, prediction3)\nprint('Changed settings + Price:', rmse3, mae3, r2_3)\n\n# Train with changed settings using log prices\nmodel4 = Ridge(alpha=10)\nmodel4.fit(X_train, y_train_log)\n\n# Predict validation prices and reverse the log transformation\nprediction4 = np.expm1(model4.predict(X_val))\n\n# Calculate validation scores\nrmse4 = np.sqrt(mean_squared_error(y_val, prediction4))\nmae4 = mean_absolute_error(y_val, prediction4)\nr2_4 = r2_score(y_val, prediction4)\nprint('Changed settings + Log_Price:', rmse4, mae4, r2_4)\n\n# Compare the four variants\ncomparison = pd.DataFrame({\n    'Variant': ['Default + Price', 'Default + Log_Price',\n                'Changed settings + Price', 'Changed settings + Log_Price'],\n    'RMSE': [rmse1, rmse2, rmse3, rmse4],\n    'MAE': [mae1, mae2, mae3, mae4],\n    'R2': [r2_1, r2_2, r2_3, r2_4]\n})\nprint(comparison.sort_values('RMSE'))\ncomparison.to_csv('variant_comparison.csv', index=False)\n\n# Choose the variant with the lowest validation RMSE\nmodels = [model1, model2, model3, model4]\nbest_index = comparison['RMSE'].idxmin()\nprint('Selected variant:', comparison.loc[best_index, 'Variant'])",
+        "approach": "alpha controls the penalty on large coefficients. Compare the default alpha of 1 with 10.\n\nmodel3 and model4 repeat the Price and Log_Price comparison with those changed settings. The pandas table compares all four variants, and idxmin selects the row with the lowest validation RMSE.",
+        "whatToLookFor": [
+          "Four variants of your one assigned algorithm.",
+          "The selected row has the lowest validation RMSE. Default settings are allowed to win."
+        ],
+        "technicalNotes": "This is manual tuning. The list models has the same order as the comparison table: index 0 means model1, 1 means model2, 2 means model3 and 3 means model4. If RMSE ties exactly, idxmin keeps the first row. The small search is a limitation to discuss.",
+        "commonMistakes": [
+          "Changed settings are not guaranteed to be better.",
+          "Do not choose or change settings using final test scores."
+        ],
+        "screenshotInstructions": "Capture the comparison and chosen variant."
+      },
+      {
+        "stepNumber": 5,
+        "title": "Evaluate on the labelled test set",
+        "code": "# Select the model with the lowest validation RMSE\nbest_model = models[best_index]\n\n# Retrain on the full training set and predict test prices\n# Indices 1 and 3 are the log-price variants\nif best_index in [1, 3]:\n    best_model.fit(X_final, y_final_log)\n    test_prediction = np.expm1(best_model.predict(X_test))\n    train_prediction = np.expm1(best_model.predict(X_final))\nelse:\n    best_model.fit(X_final, y_final)\n    test_prediction = best_model.predict(X_test)\n    train_prediction = best_model.predict(X_final)\n\n# Calculate scores in the original price units\nrmse = np.sqrt(mean_squared_error(y_test, test_prediction))\nmae = mean_absolute_error(y_test, test_prediction)\nr2 = r2_score(y_test, test_prediction)\ntrain_rmse = np.sqrt(mean_squared_error(y_final, train_prediction))\n\nprint('Training RMSE:', train_rmse)\nprint('Test RMSE:', rmse)\nprint('Test MAE:', mae)\nprint('Test R2:', r2)\n\n# Plot actual prices against predicted prices\nplt.figure()\nplt.scatter(y_test, test_prediction, alpha=0.4)\nplt.plot([0, y_test.max()], [0, y_test.max()], 'r--')\nplt.xlabel('Actual price (INR lakhs)')\nplt.ylabel('Predicted price (INR lakhs)')\nplt.title('Actual and predicted prices')\nplt.savefig('prediction_plot.png', dpi=150)\nplt.show()\n\n# Plot residuals to check the prediction errors\nplt.figure()\nplt.scatter(test_prediction, y_test - test_prediction, alpha=0.4)\nplt.axhline(0, color='red', linestyle='--')\nplt.xlabel('Predicted price (INR lakhs)')\nplt.ylabel('Actual minus predicted price (INR lakhs)')\nplt.title('Prediction errors')\nplt.savefig('residual_plot.png', dpi=150)\nplt.show()",
+        "approach": "Retrain the selected model using the full Assignment 1 training file. Evaluate it once on processed_holdout.csv. This uses all outer-training rows, including the earlier validation portion, while the labelled test stays separate.",
+        "whatToLookFor": [
+          "Training RMSE and the three final test scores.",
+          "Points near the diagonal are closer predictions.",
+          "Positive residuals mean the model underpredicted."
+        ],
+        "technicalNotes": "Indices 1 and 3 identify log-target variants. Their predictions need np.expm1. A large training/holdout gap can indicate overfitting; distance-weighted KNN can have tiny training error because a training row is its own nearest neighbour.",
+        "commonMistakes": [
+          "Do not return to Step 4 to chase better test scores.",
+          "Scores apply to the retained kilometre range."
+        ],
+        "screenshotInstructions": "Capture final scores and both plots."
+      },
+      {
+        "stepNumber": 6,
+        "title": "Save results and make predictions",
+        "code": "# Save the selected variant and evaluation scores\nresult = pd.DataFrame({\n    'Model': ['Ridge Regression'],\n    'Model_ID': ['ridge'],\n    'Student_ID': ['IT25101702'],\n    'Protocol': ['cars12-v3-validation42'],\n    'Variant': [comparison.loc[best_index, 'Variant']],\n    'Validation_RMSE': [comparison.loc[best_index, 'RMSE']],\n    'Validation_MAE': [comparison.loc[best_index, 'MAE']],\n    'Validation_R2': [comparison.loc[best_index, 'R2']],\n    'Train_RMSE': [train_rmse],\n    'Holdout_RMSE': [rmse], 'Holdout_MAE': [mae], 'Holdout_R2': [r2],\n    'Train_Rows': [len(X_final)], 'Holdout_Rows': [len(X_test)],\n    'Tuning_Rows': [len(X_train)], 'Validation_Rows': [len(X_val)],\n    'Features': [X_final.shape[1]]\n})\nresult.to_csv('ridge_result.csv', index=False)\n\n# Predict prices for the unlabelled university data\nuniversity = pd.read_csv('processed_university_test.csv')\nuniversity_prediction = best_model.predict(university)\nif best_index in [1, 3]:\n    university_prediction = np.expm1(university_prediction)\n\n# Keep predictions in the same order as the input rows\npredictions = pd.DataFrame({\n    'Row_Number': range(1, len(university) + 1),\n    'Predicted_Price_INR_Lakhs': university_prediction\n})\npredictions.to_csv('ridge_university_predictions.csv', index=False)\nprint(result.T)\nprint(predictions.head())\nprint(predictions.shape)",
+        "approach": "Save the selected validation scores and final holdout scores for the group. Then predict the university rows. Download the notebook, variant_comparison.csv, your result CSV, both plot files and predictions from Colab’s Files panel.",
+        "whatToLookFor": [
+          "A one-row result CSV named after your model.",
+          "1,234 prediction rows in their original file order."
+        ],
+        "technicalNotes": "Validation scores describe the chosen variant before full-training refitting. Holdout scores describe the refitted model. The university file has no true prices, so cannot produce evaluation metrics. Row_Number is the 1-based input row position, not a source dataset ID.",
+        "commonMistakes": [
+          "Use the one-row result CSV on the group comparison page.",
+          "Compare validation to validation and holdout to holdout."
+        ],
+        "screenshotInstructions": "Capture the result table and prediction shape."
+      }
+    ],
+    "vivaQuestions": [
+      {
+        "question": "How does your model work?",
+        "answer": "Ridge combines the features using learned weights. Its alpha penalty discourages very large weights, which can stabilize predictions when engine size and power are correlated."
+      },
+      {
+        "question": "Which parameters did you change?",
+        "answer": "alpha controls the penalty on large coefficients. Compare the default alpha of 1 with 10."
+      },
+      {
+        "question": "What are this model’s limitations?",
+        "answer": "A straight-line relationship may miss interactions and nonlinear depreciation. Coefficient size depends on feature scaling, so it is not a universal feature-importance ranking."
+      },
+      {
+        "question": "What are the training, validation and test sets for?",
+        "answer": "Development training teaches the four variants. Validation compares them and selects the settings and target transformation. The selected version is retrained on the full Assignment 1 training set and evaluated once on its labelled holdout. All members use the same files."
+      },
+      {
+        "question": "Why are there two extra tuning files?",
+        "answer": "Splitting already-imputed and scaled data would let validation rows influence training medians and scaling. The extra files were split from raw outer-training rows first and processed using development-training statistics only. The shared preparation notebook shows every step. Assignment 1 is not replaced."
+      },
+      {
+        "question": "Why compare Price and Log_Price?",
+        "answer": "This is the preprocessing variation: the target is used either directly or as log1p(Price). Logs compress large prices. np.expm1 reverses the transformation before computing errors. Both versions are scored in price units."
+      },
+      {
+        "question": "What does manual tuning mean here?",
+        "answer": "We compare two explicit parameter settings, each with two target choices. That gives four variants of one algorithm. The lowest validation RMSE wins. This is a small manual search, not an exhaustive search and not cross-validation."
+      },
+      {
+        "question": "Why use RMSE, MAE and R²?",
+        "answer": "RMSE is the main metric because larger price errors receive a larger penalty. MAE is average absolute error. Both use INR lakhs. R² compares squared error with predicting the evaluation-set mean. It can be negative and is not percentage accuracy."
+      },
+      {
+        "question": "How does the group compare its six algorithms?",
+        "answer": "Compare the chosen variants on the same validation set, using validation RMSE to select the group model and its holdout scores to assess generalization. You can also report the observed holdout ranking, but choosing from it makes it part of model selection."
+      },
+      {
+        "question": "What are the limitations?",
+        "answer": "One validation split is less stable than repeated cross-validation, and four variants cover only a small set of possibilities. Scores describe the kilometre-filtered population. The original mileage-unit and zero-value limitations remain, and earlier EDA saw the full dataset. These historical Indian prices do not establish current Sri Lankan prices."
+      },
+      {
+        "question": "Can we evaluate university test predictions?",
+        "answer": "The university test file has no Price labels. We preserve all 1,234 rows and produce predictions, but cannot calculate its RMSE, MAE or R²."
+      }
+    ]
+  },
+  {
+    "modelId": "gradient_boosting",
+    "modelName": "Gradient Boosting",
+    "modelDescription": "A sequence of small trees, each learning corrections to the current predictions.",
+    "algorithmType": "Sequential tree ensemble",
+    "memberId": "indusara",
+    "memberName": "Indusara L.G.S.",
+    "studentId": "IT25102517",
+    "steps": [
+      {
+        "stepNumber": 1,
+        "title": "Load the data",
+        "code": "# Import libraries\nimport numpy as np\nimport pandas as pd\nimport matplotlib.pyplot as plt\nfrom sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score\n\n# Load training, validation and test data\ntuning_train = pd.read_csv('tuning_train.csv')\nvalidation = pd.read_csv('tuning_validation.csv')\ntrain = pd.read_csv('processed_train.csv')\ntest = pd.read_csv('processed_holdout.csv')\n\n# Check the number of rows and columns\nprint(tuning_train.shape)\nprint(validation.shape)\nprint(train.shape)\nprint(test.shape)\n\nfrom sklearn.ensemble import GradientBoostingRegressor",
+        "approach": "Upload the five CSV files from the starter ZIP to Colab. Run the cells in order.",
+        "whatToLookFor": [
+          "Tuning training: (3578, 14). Validation: (1199, 14).",
+          "Full training: (4777, 14). Labelled test: (1194, 14)."
+        ],
+        "technicalNotes": "tuning_train.csv and tuning_validation.csv are an extra split within the original training portion. They use development-training medians and scaling only. processed_train.csv and processed_holdout.csv are the existing Assignment 1 files. processed_university_test.csv is used for prediction at the end.",
+        "commonMistakes": [
+          "Do not split the combined processed archive again.",
+          "Keep all members on the same starter files."
+        ],
+        "screenshotInstructions": "Capture the four dataset shapes."
+      },
+      {
+        "stepNumber": 2,
+        "title": "Separate inputs and prices",
+        "code": "# Separate features and targets for tuning\nX_train = tuning_train.drop(columns=['Price', 'Log_Price'])\ny_train = tuning_train['Price']\ny_train_log = tuning_train['Log_Price']\n\n# Prepare the validation set\nX_val = validation.drop(columns=['Price', 'Log_Price'])\ny_val = validation['Price']\n\n# Prepare the full training set for the selected model\nX_final = train.drop(columns=['Price', 'Log_Price'])\ny_final = train['Price']\ny_final_log = train['Log_Price']\n\n# Prepare the labelled test set\nX_test = test.drop(columns=['Price', 'Log_Price'])\ny_test = test['Price']\n\nprint(X_train.shape)\nprint(X_val.shape)\nprint(X_test.shape)",
+        "approach": "X contains the car features, and y contains the price being predicted. Keep both Price and Log_Price out of X. The two target choices let you compare a preprocessing variation without changing the original 12 features.",
+        "whatToLookFor": [
+          "Each X table has 12 columns.",
+          "Development training and validation are used for choosing a variant. The labelled test stays unused until Step 5."
+        ],
+        "technicalNotes": "Log_Price was created with np.log1p(Price). For a log-target model, np.expm1(prediction) returns its prediction to the price scale. RMSE and MAE are always calculated on that price scale.",
+        "commonMistakes": [
+          "Including Price or Log_Price in X leaks the answer.",
+          "Do not apply another scaler to already processed features."
+        ],
+        "screenshotInstructions": "Capture the input shapes."
+      },
+      {
+        "stepNumber": 3,
+        "title": "Train the two baseline variants",
+        "code": "# Train with default settings using prices\nmodel1 = GradientBoostingRegressor(random_state=42)\nmodel1.fit(X_train, y_train)\n\n# Predict validation prices\nprediction1 = model1.predict(X_val)\n\n# Calculate validation scores\nrmse1 = np.sqrt(mean_squared_error(y_val, prediction1))\nmae1 = mean_absolute_error(y_val, prediction1)\nr2_1 = r2_score(y_val, prediction1)\nprint('Default + Price:', rmse1, mae1, r2_1)\n\n# Train with default settings using log prices\nmodel2 = GradientBoostingRegressor(random_state=42)\nmodel2.fit(X_train, y_train_log)\n\n# Predict validation prices and reverse the log transformation\nprediction2 = np.expm1(model2.predict(X_val))\n\n# Calculate validation scores\nrmse2 = np.sqrt(mean_squared_error(y_val, prediction2))\nmae2 = mean_absolute_error(y_val, prediction2)\nr2_2 = r2_score(y_val, prediction2)\nprint('Default + Log_Price:', rmse2, mae2, r2_2)",
+        "approach": "With squared-error loss, the next tree learns residual errors from the ensemble so far. The learning rate controls how much of that correction is added.\n\nmodel1 uses Price. model2 uses Log_Price. Both use default parameter settings and the same development-training rows. The code trains, predicts and calculates RMSE, MAE and R² directly.",
+        "whatToLookFor": [
+          "Two lines show validation RMSE, MAE and R², in that order.",
+          "Lower RMSE and MAE are better. Higher R² is better."
+        ],
+        "technicalNotes": "fit(X, y) trains the estimator. predict(X_val) estimates validation prices. np.sqrt(mean_squared_error(...)) calculates RMSE. Log predictions are reversed before scoring.",
+        "commonMistakes": [
+          "Do not score log predictions directly against prices.",
+          "R² is not classification accuracy."
+        ],
+        "screenshotInstructions": "Capture both baseline scores."
+      },
+      {
+        "stepNumber": 4,
+        "title": "Try changed settings and compare",
+        "code": "# Train with changed settings using prices\nmodel3 = GradientBoostingRegressor(n_estimators=200, learning_rate=0.05, max_depth=3, random_state=42)\nmodel3.fit(X_train, y_train)\n\n# Predict validation prices\nprediction3 = model3.predict(X_val)\n\n# Calculate validation scores\nrmse3 = np.sqrt(mean_squared_error(y_val, prediction3))\nmae3 = mean_absolute_error(y_val, prediction3)\nr2_3 = r2_score(y_val, prediction3)\nprint('Changed settings + Price:', rmse3, mae3, r2_3)\n\n# Train with changed settings using log prices\nmodel4 = GradientBoostingRegressor(n_estimators=200, learning_rate=0.05, max_depth=3, random_state=42)\nmodel4.fit(X_train, y_train_log)\n\n# Predict validation prices and reverse the log transformation\nprediction4 = np.expm1(model4.predict(X_val))\n\n# Calculate validation scores\nrmse4 = np.sqrt(mean_squared_error(y_val, prediction4))\nmae4 = mean_absolute_error(y_val, prediction4)\nr2_4 = r2_score(y_val, prediction4)\nprint('Changed settings + Log_Price:', rmse4, mae4, r2_4)\n\n# Compare the four variants\ncomparison = pd.DataFrame({\n    'Variant': ['Default + Price', 'Default + Log_Price',\n                'Changed settings + Price', 'Changed settings + Log_Price'],\n    'RMSE': [rmse1, rmse2, rmse3, rmse4],\n    'MAE': [mae1, mae2, mae3, mae4],\n    'R2': [r2_1, r2_2, r2_3, r2_4]\n})\nprint(comparison.sort_values('RMSE'))\ncomparison.to_csv('variant_comparison.csv', index=False)\n\n# Choose the variant with the lowest validation RMSE\nmodels = [model1, model2, model3, model4]\nbest_index = comparison['RMSE'].idxmin()\nprint('Selected variant:', comparison.loc[best_index, 'Variant'])",
+        "approach": "Compare the default 100 trees and learning rate 0.1 with 200 trees and learning rate 0.05. More, smaller corrections may improve the fit.\n\nmodel3 and model4 repeat the Price and Log_Price comparison with those changed settings. The pandas table compares all four variants, and idxmin selects the row with the lowest validation RMSE.",
+        "whatToLookFor": [
+          "Four variants of your one assigned algorithm.",
+          "The selected row has the lowest validation RMSE. Default settings are allowed to win."
+        ],
+        "technicalNotes": "This is manual tuning. The list models has the same order as the comparison table: index 0 means model1, 1 means model2, 2 means model3 and 3 means model4. If RMSE ties exactly, idxmin keeps the first row. The small search is a limitation to discuss.",
+        "commonMistakes": [
+          "Changed settings are not guaranteed to be better.",
+          "Do not choose or change settings using final test scores."
+        ],
+        "screenshotInstructions": "Capture the comparison and chosen variant."
+      },
+      {
+        "stepNumber": 5,
+        "title": "Evaluate on the labelled test set",
+        "code": "# Select the model with the lowest validation RMSE\nbest_model = models[best_index]\n\n# Retrain on the full training set and predict test prices\n# Indices 1 and 3 are the log-price variants\nif best_index in [1, 3]:\n    best_model.fit(X_final, y_final_log)\n    test_prediction = np.expm1(best_model.predict(X_test))\n    train_prediction = np.expm1(best_model.predict(X_final))\nelse:\n    best_model.fit(X_final, y_final)\n    test_prediction = best_model.predict(X_test)\n    train_prediction = best_model.predict(X_final)\n\n# Calculate scores in the original price units\nrmse = np.sqrt(mean_squared_error(y_test, test_prediction))\nmae = mean_absolute_error(y_test, test_prediction)\nr2 = r2_score(y_test, test_prediction)\ntrain_rmse = np.sqrt(mean_squared_error(y_final, train_prediction))\n\nprint('Training RMSE:', train_rmse)\nprint('Test RMSE:', rmse)\nprint('Test MAE:', mae)\nprint('Test R2:', r2)\n\n# Plot actual prices against predicted prices\nplt.figure()\nplt.scatter(y_test, test_prediction, alpha=0.4)\nplt.plot([0, y_test.max()], [0, y_test.max()], 'r--')\nplt.xlabel('Actual price (INR lakhs)')\nplt.ylabel('Predicted price (INR lakhs)')\nplt.title('Actual and predicted prices')\nplt.savefig('prediction_plot.png', dpi=150)\nplt.show()\n\n# Plot residuals to check the prediction errors\nplt.figure()\nplt.scatter(test_prediction, y_test - test_prediction, alpha=0.4)\nplt.axhline(0, color='red', linestyle='--')\nplt.xlabel('Predicted price (INR lakhs)')\nplt.ylabel('Actual minus predicted price (INR lakhs)')\nplt.title('Prediction errors')\nplt.savefig('residual_plot.png', dpi=150)\nplt.show()",
+        "approach": "Retrain the selected model using the full Assignment 1 training file. Evaluate it once on processed_holdout.csv. This uses all outer-training rows, including the earlier validation portion, while the labelled test stays separate.",
+        "whatToLookFor": [
+          "Training RMSE and the three final test scores.",
+          "Points near the diagonal are closer predictions.",
+          "Positive residuals mean the model underpredicted."
+        ],
+        "technicalNotes": "Indices 1 and 3 identify log-target variants. Their predictions need np.expm1. A large training/holdout gap can indicate overfitting; distance-weighted KNN can have tiny training error because a training row is its own nearest neighbour.",
+        "commonMistakes": [
+          "Do not return to Step 4 to chase better test scores.",
+          "Scores apply to the retained kilometre range."
+        ],
+        "screenshotInstructions": "Capture final scores and both plots."
+      },
+      {
+        "stepNumber": 6,
+        "title": "Save results and make predictions",
+        "code": "# Save the selected variant and evaluation scores\nresult = pd.DataFrame({\n    'Model': ['Gradient Boosting'],\n    'Model_ID': ['gradient_boosting'],\n    'Student_ID': ['IT25102517'],\n    'Protocol': ['cars12-v3-validation42'],\n    'Variant': [comparison.loc[best_index, 'Variant']],\n    'Validation_RMSE': [comparison.loc[best_index, 'RMSE']],\n    'Validation_MAE': [comparison.loc[best_index, 'MAE']],\n    'Validation_R2': [comparison.loc[best_index, 'R2']],\n    'Train_RMSE': [train_rmse],\n    'Holdout_RMSE': [rmse], 'Holdout_MAE': [mae], 'Holdout_R2': [r2],\n    'Train_Rows': [len(X_final)], 'Holdout_Rows': [len(X_test)],\n    'Tuning_Rows': [len(X_train)], 'Validation_Rows': [len(X_val)],\n    'Features': [X_final.shape[1]]\n})\nresult.to_csv('gradient_boosting_result.csv', index=False)\n\n# Predict prices for the unlabelled university data\nuniversity = pd.read_csv('processed_university_test.csv')\nuniversity_prediction = best_model.predict(university)\nif best_index in [1, 3]:\n    university_prediction = np.expm1(university_prediction)\n\n# Keep predictions in the same order as the input rows\npredictions = pd.DataFrame({\n    'Row_Number': range(1, len(university) + 1),\n    'Predicted_Price_INR_Lakhs': university_prediction\n})\npredictions.to_csv('gradient_boosting_university_predictions.csv', index=False)\nprint(result.T)\nprint(predictions.head())\nprint(predictions.shape)",
+        "approach": "Save the selected validation scores and final holdout scores for the group. Then predict the university rows. Download the notebook, variant_comparison.csv, your result CSV, both plot files and predictions from Colab’s Files panel.",
+        "whatToLookFor": [
+          "A one-row result CSV named after your model.",
+          "1,234 prediction rows in their original file order."
+        ],
+        "technicalNotes": "Validation scores describe the chosen variant before full-training refitting. Holdout scores describe the refitted model. The university file has no true prices, so cannot produce evaluation metrics. Row_Number is the 1-based input row position, not a source dataset ID.",
+        "commonMistakes": [
+          "Use the one-row result CSV on the group comparison page.",
+          "Compare validation to validation and holdout to holdout."
+        ],
+        "screenshotInstructions": "Capture the result table and prediction shape."
+      }
+    ],
+    "vivaQuestions": [
+      {
+        "question": "How does your model work?",
+        "answer": "With squared-error loss, the next tree learns residual errors from the ensemble so far. The learning rate controls how much of that correction is added."
+      },
+      {
+        "question": "Which parameters did you change?",
+        "answer": "Compare the default 100 trees and learning rate 0.1 with 200 trees and learning rate 0.05. More, smaller corrections may improve the fit."
+      },
+      {
+        "question": "What are this model’s limitations?",
+        "answer": "Deep trees or too many aggressive corrections can overfit. Trees are sequential, so this search can take longer. Large-price errors can still dominate RMSE."
+      },
+      {
+        "question": "What are the training, validation and test sets for?",
+        "answer": "Development training teaches the four variants. Validation compares them and selects the settings and target transformation. The selected version is retrained on the full Assignment 1 training set and evaluated once on its labelled holdout. All members use the same files."
+      },
+      {
+        "question": "Why are there two extra tuning files?",
+        "answer": "Splitting already-imputed and scaled data would let validation rows influence training medians and scaling. The extra files were split from raw outer-training rows first and processed using development-training statistics only. The shared preparation notebook shows every step. Assignment 1 is not replaced."
+      },
+      {
+        "question": "Why compare Price and Log_Price?",
+        "answer": "This is the preprocessing variation: the target is used either directly or as log1p(Price). Logs compress large prices. np.expm1 reverses the transformation before computing errors. Both versions are scored in price units."
+      },
+      {
+        "question": "What does manual tuning mean here?",
+        "answer": "We compare two explicit parameter settings, each with two target choices. That gives four variants of one algorithm. The lowest validation RMSE wins. This is a small manual search, not an exhaustive search and not cross-validation."
+      },
+      {
+        "question": "Why use RMSE, MAE and R²?",
+        "answer": "RMSE is the main metric because larger price errors receive a larger penalty. MAE is average absolute error. Both use INR lakhs. R² compares squared error with predicting the evaluation-set mean. It can be negative and is not percentage accuracy."
+      },
+      {
+        "question": "How does the group compare its six algorithms?",
+        "answer": "Compare the chosen variants on the same validation set, using validation RMSE to select the group model and its holdout scores to assess generalization. You can also report the observed holdout ranking, but choosing from it makes it part of model selection."
+      },
+      {
+        "question": "What are the limitations?",
+        "answer": "One validation split is less stable than repeated cross-validation, and four variants cover only a small set of possibilities. Scores describe the kilometre-filtered population. The original mileage-unit and zero-value limitations remain, and earlier EDA saw the full dataset. These historical Indian prices do not establish current Sri Lankan prices."
+      },
+      {
+        "question": "Can we evaluate university test predictions?",
+        "answer": "The university test file has no Price labels. We preserve all 1,234 rows and produce predictions, but cannot calculate its RMSE, MAE or R²."
+      }
+    ]
+  },
+  {
+    "modelId": "random_forest",
+    "modelName": "Random Forest",
+    "modelDescription": "Many bootstrap-trained trees whose predictions are averaged.",
+    "algorithmType": "Bagged tree ensemble",
+    "memberId": "gunathilake",
+    "memberName": "Gunathilake P.G.K.I.",
+    "studentId": "IT25103600",
+    "steps": [
+      {
+        "stepNumber": 1,
+        "title": "Load the data",
+        "code": "# Import libraries\nimport numpy as np\nimport pandas as pd\nimport matplotlib.pyplot as plt\nfrom sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score\n\n# Load training, validation and test data\ntuning_train = pd.read_csv('tuning_train.csv')\nvalidation = pd.read_csv('tuning_validation.csv')\ntrain = pd.read_csv('processed_train.csv')\ntest = pd.read_csv('processed_holdout.csv')\n\n# Check the number of rows and columns\nprint(tuning_train.shape)\nprint(validation.shape)\nprint(train.shape)\nprint(test.shape)\n\nfrom sklearn.ensemble import RandomForestRegressor",
+        "approach": "Upload the five CSV files from the starter ZIP to Colab. Run the cells in order.",
+        "whatToLookFor": [
+          "Tuning training: (3578, 14). Validation: (1199, 14).",
+          "Full training: (4777, 14). Labelled test: (1194, 14)."
+        ],
+        "technicalNotes": "tuning_train.csv and tuning_validation.csv are an extra split within the original training portion. They use development-training medians and scaling only. processed_train.csv and processed_holdout.csv are the existing Assignment 1 files. processed_university_test.csv is used for prediction at the end.",
+        "commonMistakes": [
+          "Do not split the combined processed archive again.",
+          "Keep all members on the same starter files."
+        ],
+        "screenshotInstructions": "Capture the four dataset shapes."
+      },
+      {
+        "stepNumber": 2,
+        "title": "Separate inputs and prices",
+        "code": "# Separate features and targets for tuning\nX_train = tuning_train.drop(columns=['Price', 'Log_Price'])\ny_train = tuning_train['Price']\ny_train_log = tuning_train['Log_Price']\n\n# Prepare the validation set\nX_val = validation.drop(columns=['Price', 'Log_Price'])\ny_val = validation['Price']\n\n# Prepare the full training set for the selected model\nX_final = train.drop(columns=['Price', 'Log_Price'])\ny_final = train['Price']\ny_final_log = train['Log_Price']\n\n# Prepare the labelled test set\nX_test = test.drop(columns=['Price', 'Log_Price'])\ny_test = test['Price']\n\nprint(X_train.shape)\nprint(X_val.shape)\nprint(X_test.shape)",
+        "approach": "X contains the car features, and y contains the price being predicted. Keep both Price and Log_Price out of X. The two target choices let you compare a preprocessing variation without changing the original 12 features.",
+        "whatToLookFor": [
+          "Each X table has 12 columns.",
+          "Development training and validation are used for choosing a variant. The labelled test stays unused until Step 5."
+        ],
+        "technicalNotes": "Log_Price was created with np.log1p(Price). For a log-target model, np.expm1(prediction) returns its prediction to the price scale. RMSE and MAE are always calculated on that price scale.",
+        "commonMistakes": [
+          "Including Price or Log_Price in X leaks the answer.",
+          "Do not apply another scaler to already processed features."
+        ],
+        "screenshotInstructions": "Capture the input shapes."
+      },
+      {
+        "stepNumber": 3,
+        "title": "Train the two baseline variants",
+        "code": "# Train with default settings using prices\nmodel1 = RandomForestRegressor(random_state=42, n_jobs=-1)\nmodel1.fit(X_train, y_train)\n\n# Predict validation prices\nprediction1 = model1.predict(X_val)\n\n# Calculate validation scores\nrmse1 = np.sqrt(mean_squared_error(y_val, prediction1))\nmae1 = mean_absolute_error(y_val, prediction1)\nr2_1 = r2_score(y_val, prediction1)\nprint('Default + Price:', rmse1, mae1, r2_1)\n\n# Train with default settings using log prices\nmodel2 = RandomForestRegressor(random_state=42, n_jobs=-1)\nmodel2.fit(X_train, y_train_log)\n\n# Predict validation prices and reverse the log transformation\nprediction2 = np.expm1(model2.predict(X_val))\n\n# Calculate validation scores\nrmse2 = np.sqrt(mean_squared_error(y_val, prediction2))\nmae2 = mean_absolute_error(y_val, prediction2)\nr2_2 = r2_score(y_val, prediction2)\nprint('Default + Log_Price:', rmse2, mae2, r2_2)",
+        "approach": "Each tree learns from a bootstrap sample of training rows. Averaging their predictions usually reduces variance compared with one tree. Feature subsampling is controlled by max_features; the default regressor considers all features.\n\nmodel1 uses Price. model2 uses Log_Price. Both use default parameter settings and the same development-training rows. The code trains, predicts and calculates RMSE, MAE and R² directly.",
+        "whatToLookFor": [
+          "Two lines show validation RMSE, MAE and R², in that order.",
+          "Lower RMSE and MAE are better. Higher R² is better."
+        ],
+        "technicalNotes": "fit(X, y) trains the estimator. predict(X_val) estimates validation prices. np.sqrt(mean_squared_error(...)) calculates RMSE. Log predictions are reversed before scoring.",
+        "commonMistakes": [
+          "Do not score log predictions directly against prices.",
+          "R² is not classification accuracy."
+        ],
+        "screenshotInstructions": "Capture both baseline scores."
+      },
+      {
+        "stepNumber": 4,
+        "title": "Try changed settings and compare",
+        "code": "# Train with changed settings using prices\nmodel3 = RandomForestRegressor(n_estimators=100, max_depth=12, min_samples_leaf=3, random_state=42, n_jobs=-1)\nmodel3.fit(X_train, y_train)\n\n# Predict validation prices\nprediction3 = model3.predict(X_val)\n\n# Calculate validation scores\nrmse3 = np.sqrt(mean_squared_error(y_val, prediction3))\nmae3 = mean_absolute_error(y_val, prediction3)\nr2_3 = r2_score(y_val, prediction3)\nprint('Changed settings + Price:', rmse3, mae3, r2_3)\n\n# Train with changed settings using log prices\nmodel4 = RandomForestRegressor(n_estimators=100, max_depth=12, min_samples_leaf=3, random_state=42, n_jobs=-1)\nmodel4.fit(X_train, y_train_log)\n\n# Predict validation prices and reverse the log transformation\nprediction4 = np.expm1(model4.predict(X_val))\n\n# Calculate validation scores\nrmse4 = np.sqrt(mean_squared_error(y_val, prediction4))\nmae4 = mean_absolute_error(y_val, prediction4)\nr2_4 = r2_score(y_val, prediction4)\nprint('Changed settings + Log_Price:', rmse4, mae4, r2_4)\n\n# Compare the four variants\ncomparison = pd.DataFrame({\n    'Variant': ['Default + Price', 'Default + Log_Price',\n                'Changed settings + Price', 'Changed settings + Log_Price'],\n    'RMSE': [rmse1, rmse2, rmse3, rmse4],\n    'MAE': [mae1, mae2, mae3, mae4],\n    'R2': [r2_1, r2_2, r2_3, r2_4]\n})\nprint(comparison.sort_values('RMSE'))\ncomparison.to_csv('variant_comparison.csv', index=False)\n\n# Choose the variant with the lowest validation RMSE\nmodels = [model1, model2, model3, model4]\nbest_index = comparison['RMSE'].idxmin()\nprint('Selected variant:', comparison.loc[best_index, 'Variant'])",
+        "approach": "Compare unrestricted default trees with depth 12 and at least 3 rows per leaf. These limits can reduce overfitting.\n\nmodel3 and model4 repeat the Price and Log_Price comparison with those changed settings. The pandas table compares all four variants, and idxmin selects the row with the lowest validation RMSE.",
+        "whatToLookFor": [
+          "Four variants of your one assigned algorithm.",
+          "The selected row has the lowest validation RMSE. Default settings are allowed to win."
+        ],
+        "technicalNotes": "This is manual tuning. The list models has the same order as the comparison table: index 0 means model1, 1 means model2, 2 means model3 and 3 means model4. If RMSE ties exactly, idxmin keeps the first row. The small search is a limitation to discuss.",
+        "commonMistakes": [
+          "Changed settings are not guaranteed to be better.",
+          "Do not choose or change settings using final test scores."
+        ],
+        "screenshotInstructions": "Capture the comparison and chosen variant."
+      },
+      {
+        "stepNumber": 5,
+        "title": "Evaluate on the labelled test set",
+        "code": "# Select the model with the lowest validation RMSE\nbest_model = models[best_index]\n\n# Retrain on the full training set and predict test prices\n# Indices 1 and 3 are the log-price variants\nif best_index in [1, 3]:\n    best_model.fit(X_final, y_final_log)\n    test_prediction = np.expm1(best_model.predict(X_test))\n    train_prediction = np.expm1(best_model.predict(X_final))\nelse:\n    best_model.fit(X_final, y_final)\n    test_prediction = best_model.predict(X_test)\n    train_prediction = best_model.predict(X_final)\n\n# Calculate scores in the original price units\nrmse = np.sqrt(mean_squared_error(y_test, test_prediction))\nmae = mean_absolute_error(y_test, test_prediction)\nr2 = r2_score(y_test, test_prediction)\ntrain_rmse = np.sqrt(mean_squared_error(y_final, train_prediction))\n\nprint('Training RMSE:', train_rmse)\nprint('Test RMSE:', rmse)\nprint('Test MAE:', mae)\nprint('Test R2:', r2)\n\n# Plot actual prices against predicted prices\nplt.figure()\nplt.scatter(y_test, test_prediction, alpha=0.4)\nplt.plot([0, y_test.max()], [0, y_test.max()], 'r--')\nplt.xlabel('Actual price (INR lakhs)')\nplt.ylabel('Predicted price (INR lakhs)')\nplt.title('Actual and predicted prices')\nplt.savefig('prediction_plot.png', dpi=150)\nplt.show()\n\n# Plot residuals to check the prediction errors\nplt.figure()\nplt.scatter(test_prediction, y_test - test_prediction, alpha=0.4)\nplt.axhline(0, color='red', linestyle='--')\nplt.xlabel('Predicted price (INR lakhs)')\nplt.ylabel('Actual minus predicted price (INR lakhs)')\nplt.title('Prediction errors')\nplt.savefig('residual_plot.png', dpi=150)\nplt.show()",
+        "approach": "Retrain the selected model using the full Assignment 1 training file. Evaluate it once on processed_holdout.csv. This uses all outer-training rows, including the earlier validation portion, while the labelled test stays separate.",
+        "whatToLookFor": [
+          "Training RMSE and the three final test scores.",
+          "Points near the diagonal are closer predictions.",
+          "Positive residuals mean the model underpredicted."
+        ],
+        "technicalNotes": "Indices 1 and 3 identify log-target variants. Their predictions need np.expm1. A large training/holdout gap can indicate overfitting; distance-weighted KNN can have tiny training error because a training row is its own nearest neighbour.",
+        "commonMistakes": [
+          "Do not return to Step 4 to chase better test scores.",
+          "Scores apply to the retained kilometre range."
+        ],
+        "screenshotInstructions": "Capture final scores and both plots."
+      },
+      {
+        "stepNumber": 6,
+        "title": "Save results and make predictions",
+        "code": "# Save the selected variant and evaluation scores\nresult = pd.DataFrame({\n    'Model': ['Random Forest'],\n    'Model_ID': ['random_forest'],\n    'Student_ID': ['IT25103600'],\n    'Protocol': ['cars12-v3-validation42'],\n    'Variant': [comparison.loc[best_index, 'Variant']],\n    'Validation_RMSE': [comparison.loc[best_index, 'RMSE']],\n    'Validation_MAE': [comparison.loc[best_index, 'MAE']],\n    'Validation_R2': [comparison.loc[best_index, 'R2']],\n    'Train_RMSE': [train_rmse],\n    'Holdout_RMSE': [rmse], 'Holdout_MAE': [mae], 'Holdout_R2': [r2],\n    'Train_Rows': [len(X_final)], 'Holdout_Rows': [len(X_test)],\n    'Tuning_Rows': [len(X_train)], 'Validation_Rows': [len(X_val)],\n    'Features': [X_final.shape[1]]\n})\nresult.to_csv('random_forest_result.csv', index=False)\n\n# Predict prices for the unlabelled university data\nuniversity = pd.read_csv('processed_university_test.csv')\nuniversity_prediction = best_model.predict(university)\nif best_index in [1, 3]:\n    university_prediction = np.expm1(university_prediction)\n\n# Keep predictions in the same order as the input rows\npredictions = pd.DataFrame({\n    'Row_Number': range(1, len(university) + 1),\n    'Predicted_Price_INR_Lakhs': university_prediction\n})\npredictions.to_csv('random_forest_university_predictions.csv', index=False)\nprint(result.T)\nprint(predictions.head())\nprint(predictions.shape)",
+        "approach": "Save the selected validation scores and final holdout scores for the group. Then predict the university rows. Download the notebook, variant_comparison.csv, your result CSV, both plot files and predictions from Colab’s Files panel.",
+        "whatToLookFor": [
+          "A one-row result CSV named after your model.",
+          "1,234 prediction rows in their original file order."
+        ],
+        "technicalNotes": "Validation scores describe the chosen variant before full-training refitting. Holdout scores describe the refitted model. The university file has no true prices, so cannot produce evaluation metrics. Row_Number is the 1-based input row position, not a source dataset ID.",
+        "commonMistakes": [
+          "Use the one-row result CSV on the group comparison page.",
+          "Compare validation to validation and holdout to holdout."
+        ],
+        "screenshotInstructions": "Capture the result table and prediction shape."
+      }
+    ],
+    "vivaQuestions": [
+      {
+        "question": "How does your model work?",
+        "answer": "Each tree learns from a bootstrap sample of training rows. Averaging their predictions usually reduces variance compared with one tree. Feature subsampling is controlled by max_features; the default regressor considers all features."
+      },
+      {
+        "question": "Which parameters did you change?",
+        "answer": "Compare unrestricted default trees with depth 12 and at least 3 rows per leaf. These limits can reduce overfitting."
+      },
+      {
+        "question": "What are this model’s limitations?",
+        "answer": "Averaging reduces variance but does not eliminate overfitting. Forests can be slower and less interpretable than one tree. Regression impurity importance is not Gini importance or a causal explanation."
+      },
+      {
+        "question": "What are the training, validation and test sets for?",
+        "answer": "Development training teaches the four variants. Validation compares them and selects the settings and target transformation. The selected version is retrained on the full Assignment 1 training set and evaluated once on its labelled holdout. All members use the same files."
+      },
+      {
+        "question": "Why are there two extra tuning files?",
+        "answer": "Splitting already-imputed and scaled data would let validation rows influence training medians and scaling. The extra files were split from raw outer-training rows first and processed using development-training statistics only. The shared preparation notebook shows every step. Assignment 1 is not replaced."
+      },
+      {
+        "question": "Why compare Price and Log_Price?",
+        "answer": "This is the preprocessing variation: the target is used either directly or as log1p(Price). Logs compress large prices. np.expm1 reverses the transformation before computing errors. Both versions are scored in price units."
+      },
+      {
+        "question": "What does manual tuning mean here?",
+        "answer": "We compare two explicit parameter settings, each with two target choices. That gives four variants of one algorithm. The lowest validation RMSE wins. This is a small manual search, not an exhaustive search and not cross-validation."
+      },
+      {
+        "question": "Why use RMSE, MAE and R²?",
+        "answer": "RMSE is the main metric because larger price errors receive a larger penalty. MAE is average absolute error. Both use INR lakhs. R² compares squared error with predicting the evaluation-set mean. It can be negative and is not percentage accuracy."
+      },
+      {
+        "question": "How does the group compare its six algorithms?",
+        "answer": "Compare the chosen variants on the same validation set, using validation RMSE to select the group model and its holdout scores to assess generalization. You can also report the observed holdout ranking, but choosing from it makes it part of model selection."
+      },
+      {
+        "question": "What are the limitations?",
+        "answer": "One validation split is less stable than repeated cross-validation, and four variants cover only a small set of possibilities. Scores describe the kilometre-filtered population. The original mileage-unit and zero-value limitations remain, and earlier EDA saw the full dataset. These historical Indian prices do not establish current Sri Lankan prices."
+      },
+      {
+        "question": "Can we evaluate university test predictions?",
+        "answer": "The university test file has no Price labels. We preserve all 1,234 rows and produce predictions, but cannot calculate its RMSE, MAE or R²."
+      }
+    ]
+  },
+  {
+    "modelId": "decision_tree",
+    "modelName": "Decision Tree",
+    "modelDescription": "A set of feature-threshold rules ending in numerical predictions.",
+    "algorithmType": "Single regression tree",
+    "memberId": "wijerathna",
+    "memberName": "Wijerathna K.G.C.J.",
+    "studentId": "IT25101522",
+    "steps": [
+      {
+        "stepNumber": 1,
+        "title": "Load the data",
+        "code": "# Import libraries\nimport numpy as np\nimport pandas as pd\nimport matplotlib.pyplot as plt\nfrom sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score\n\n# Load training, validation and test data\ntuning_train = pd.read_csv('tuning_train.csv')\nvalidation = pd.read_csv('tuning_validation.csv')\ntrain = pd.read_csv('processed_train.csv')\ntest = pd.read_csv('processed_holdout.csv')\n\n# Check the number of rows and columns\nprint(tuning_train.shape)\nprint(validation.shape)\nprint(train.shape)\nprint(test.shape)\n\nfrom sklearn.tree import DecisionTreeRegressor",
+        "approach": "Upload the five CSV files from the starter ZIP to Colab. Run the cells in order.",
+        "whatToLookFor": [
+          "Tuning training: (3578, 14). Validation: (1199, 14).",
+          "Full training: (4777, 14). Labelled test: (1194, 14)."
+        ],
+        "technicalNotes": "tuning_train.csv and tuning_validation.csv are an extra split within the original training portion. They use development-training medians and scaling only. processed_train.csv and processed_holdout.csv are the existing Assignment 1 files. processed_university_test.csv is used for prediction at the end.",
+        "commonMistakes": [
+          "Do not split the combined processed archive again.",
+          "Keep all members on the same starter files."
+        ],
+        "screenshotInstructions": "Capture the four dataset shapes."
+      },
+      {
+        "stepNumber": 2,
+        "title": "Separate inputs and prices",
+        "code": "# Separate features and targets for tuning\nX_train = tuning_train.drop(columns=['Price', 'Log_Price'])\ny_train = tuning_train['Price']\ny_train_log = tuning_train['Log_Price']\n\n# Prepare the validation set\nX_val = validation.drop(columns=['Price', 'Log_Price'])\ny_val = validation['Price']\n\n# Prepare the full training set for the selected model\nX_final = train.drop(columns=['Price', 'Log_Price'])\ny_final = train['Price']\ny_final_log = train['Log_Price']\n\n# Prepare the labelled test set\nX_test = test.drop(columns=['Price', 'Log_Price'])\ny_test = test['Price']\n\nprint(X_train.shape)\nprint(X_val.shape)\nprint(X_test.shape)",
+        "approach": "X contains the car features, and y contains the price being predicted. Keep both Price and Log_Price out of X. The two target choices let you compare a preprocessing variation without changing the original 12 features.",
+        "whatToLookFor": [
+          "Each X table has 12 columns.",
+          "Development training and validation are used for choosing a variant. The labelled test stays unused until Step 5."
+        ],
+        "technicalNotes": "Log_Price was created with np.log1p(Price). For a log-target model, np.expm1(prediction) returns its prediction to the price scale. RMSE and MAE are always calculated on that price scale.",
+        "commonMistakes": [
+          "Including Price or Log_Price in X leaks the answer.",
+          "Do not apply another scaler to already processed features."
+        ],
+        "screenshotInstructions": "Capture the input shapes."
+      },
+      {
+        "stepNumber": 3,
+        "title": "Train the two baseline variants",
+        "code": "# Train with default settings using prices\nmodel1 = DecisionTreeRegressor(random_state=42)\nmodel1.fit(X_train, y_train)\n\n# Predict validation prices\nprediction1 = model1.predict(X_val)\n\n# Calculate validation scores\nrmse1 = np.sqrt(mean_squared_error(y_val, prediction1))\nmae1 = mean_absolute_error(y_val, prediction1)\nr2_1 = r2_score(y_val, prediction1)\nprint('Default + Price:', rmse1, mae1, r2_1)\n\n# Train with default settings using log prices\nmodel2 = DecisionTreeRegressor(random_state=42)\nmodel2.fit(X_train, y_train_log)\n\n# Predict validation prices and reverse the log transformation\nprediction2 = np.expm1(model2.predict(X_val))\n\n# Calculate validation scores\nrmse2 = np.sqrt(mean_squared_error(y_val, prediction2))\nmae2 = mean_absolute_error(y_val, prediction2)\nr2_2 = r2_score(y_val, prediction2)\nprint('Default + Log_Price:', rmse2, mae2, r2_2)",
+        "approach": "The tree chooses splits that reduce squared error within the child groups. A leaf predicts the mean training target of its rows. If the target is log price, that mean is on the log scale until we reverse it.\n\nmodel1 uses Price. model2 uses Log_Price. Both use default parameter settings and the same development-training rows. The code trains, predicts and calculates RMSE, MAE and R² directly.",
+        "whatToLookFor": [
+          "Two lines show validation RMSE, MAE and R², in that order.",
+          "Lower RMSE and MAE are better. Higher R² is better."
+        ],
+        "technicalNotes": "fit(X, y) trains the estimator. predict(X_val) estimates validation prices. np.sqrt(mean_squared_error(...)) calculates RMSE. Log predictions are reversed before scoring.",
+        "commonMistakes": [
+          "Do not score log predictions directly against prices.",
+          "R² is not classification accuracy."
+        ],
+        "screenshotInstructions": "Capture both baseline scores."
+      },
+      {
+        "stepNumber": 4,
+        "title": "Try changed settings and compare",
+        "code": "# Train with changed settings using prices\nmodel3 = DecisionTreeRegressor(max_depth=8, min_samples_leaf=5, random_state=42)\nmodel3.fit(X_train, y_train)\n\n# Predict validation prices\nprediction3 = model3.predict(X_val)\n\n# Calculate validation scores\nrmse3 = np.sqrt(mean_squared_error(y_val, prediction3))\nmae3 = mean_absolute_error(y_val, prediction3)\nr2_3 = r2_score(y_val, prediction3)\nprint('Changed settings + Price:', rmse3, mae3, r2_3)\n\n# Train with changed settings using log prices\nmodel4 = DecisionTreeRegressor(max_depth=8, min_samples_leaf=5, random_state=42)\nmodel4.fit(X_train, y_train_log)\n\n# Predict validation prices and reverse the log transformation\nprediction4 = np.expm1(model4.predict(X_val))\n\n# Calculate validation scores\nrmse4 = np.sqrt(mean_squared_error(y_val, prediction4))\nmae4 = mean_absolute_error(y_val, prediction4)\nr2_4 = r2_score(y_val, prediction4)\nprint('Changed settings + Log_Price:', rmse4, mae4, r2_4)\n\n# Compare the four variants\ncomparison = pd.DataFrame({\n    'Variant': ['Default + Price', 'Default + Log_Price',\n                'Changed settings + Price', 'Changed settings + Log_Price'],\n    'RMSE': [rmse1, rmse2, rmse3, rmse4],\n    'MAE': [mae1, mae2, mae3, mae4],\n    'R2': [r2_1, r2_2, r2_3, r2_4]\n})\nprint(comparison.sort_values('RMSE'))\ncomparison.to_csv('variant_comparison.csv', index=False)\n\n# Choose the variant with the lowest validation RMSE\nmodels = [model1, model2, model3, model4]\nbest_index = comparison['RMSE'].idxmin()\nprint('Selected variant:', comparison.loc[best_index, 'Variant'])",
+        "approach": "Compare the unrestricted default tree with a depth limit of 8 and at least 5 rows per leaf. A restricted tree may generalize better.\n\nmodel3 and model4 repeat the Price and Log_Price comparison with those changed settings. The pandas table compares all four variants, and idxmin selects the row with the lowest validation RMSE.",
+        "whatToLookFor": [
+          "Four variants of your one assigned algorithm.",
+          "The selected row has the lowest validation RMSE. Default settings are allowed to win."
+        ],
+        "technicalNotes": "This is manual tuning. The list models has the same order as the comparison table: index 0 means model1, 1 means model2, 2 means model3 and 3 means model4. If RMSE ties exactly, idxmin keeps the first row. The small search is a limitation to discuss.",
+        "commonMistakes": [
+          "Changed settings are not guaranteed to be better.",
+          "Do not choose or change settings using final test scores."
+        ],
+        "screenshotInstructions": "Capture the comparison and chosen variant."
+      },
+      {
+        "stepNumber": 5,
+        "title": "Evaluate on the labelled test set",
+        "code": "# Select the model with the lowest validation RMSE\nbest_model = models[best_index]\n\n# Retrain on the full training set and predict test prices\n# Indices 1 and 3 are the log-price variants\nif best_index in [1, 3]:\n    best_model.fit(X_final, y_final_log)\n    test_prediction = np.expm1(best_model.predict(X_test))\n    train_prediction = np.expm1(best_model.predict(X_final))\nelse:\n    best_model.fit(X_final, y_final)\n    test_prediction = best_model.predict(X_test)\n    train_prediction = best_model.predict(X_final)\n\n# Calculate scores in the original price units\nrmse = np.sqrt(mean_squared_error(y_test, test_prediction))\nmae = mean_absolute_error(y_test, test_prediction)\nr2 = r2_score(y_test, test_prediction)\ntrain_rmse = np.sqrt(mean_squared_error(y_final, train_prediction))\n\nprint('Training RMSE:', train_rmse)\nprint('Test RMSE:', rmse)\nprint('Test MAE:', mae)\nprint('Test R2:', r2)\n\n# Plot actual prices against predicted prices\nplt.figure()\nplt.scatter(y_test, test_prediction, alpha=0.4)\nplt.plot([0, y_test.max()], [0, y_test.max()], 'r--')\nplt.xlabel('Actual price (INR lakhs)')\nplt.ylabel('Predicted price (INR lakhs)')\nplt.title('Actual and predicted prices')\nplt.savefig('prediction_plot.png', dpi=150)\nplt.show()\n\n# Plot residuals to check the prediction errors\nplt.figure()\nplt.scatter(test_prediction, y_test - test_prediction, alpha=0.4)\nplt.axhline(0, color='red', linestyle='--')\nplt.xlabel('Predicted price (INR lakhs)')\nplt.ylabel('Actual minus predicted price (INR lakhs)')\nplt.title('Prediction errors')\nplt.savefig('residual_plot.png', dpi=150)\nplt.show()",
+        "approach": "Retrain the selected model using the full Assignment 1 training file. Evaluate it once on processed_holdout.csv. This uses all outer-training rows, including the earlier validation portion, while the labelled test stays separate.",
+        "whatToLookFor": [
+          "Training RMSE and the three final test scores.",
+          "Points near the diagonal are closer predictions.",
+          "Positive residuals mean the model underpredicted."
+        ],
+        "technicalNotes": "Indices 1 and 3 identify log-target variants. Their predictions need np.expm1. A large training/holdout gap can indicate overfitting; distance-weighted KNN can have tiny training error because a training row is its own nearest neighbour.",
+        "commonMistakes": [
+          "Do not return to Step 4 to chase better test scores.",
+          "Scores apply to the retained kilometre range."
+        ],
+        "screenshotInstructions": "Capture final scores and both plots."
+      },
+      {
+        "stepNumber": 6,
+        "title": "Save results and make predictions",
+        "code": "# Save the selected variant and evaluation scores\nresult = pd.DataFrame({\n    'Model': ['Decision Tree'],\n    'Model_ID': ['decision_tree'],\n    'Student_ID': ['IT25101522'],\n    'Protocol': ['cars12-v3-validation42'],\n    'Variant': [comparison.loc[best_index, 'Variant']],\n    'Validation_RMSE': [comparison.loc[best_index, 'RMSE']],\n    'Validation_MAE': [comparison.loc[best_index, 'MAE']],\n    'Validation_R2': [comparison.loc[best_index, 'R2']],\n    'Train_RMSE': [train_rmse],\n    'Holdout_RMSE': [rmse], 'Holdout_MAE': [mae], 'Holdout_R2': [r2],\n    'Train_Rows': [len(X_final)], 'Holdout_Rows': [len(X_test)],\n    'Tuning_Rows': [len(X_train)], 'Validation_Rows': [len(X_val)],\n    'Features': [X_final.shape[1]]\n})\nresult.to_csv('decision_tree_result.csv', index=False)\n\n# Predict prices for the unlabelled university data\nuniversity = pd.read_csv('processed_university_test.csv')\nuniversity_prediction = best_model.predict(university)\nif best_index in [1, 3]:\n    university_prediction = np.expm1(university_prediction)\n\n# Keep predictions in the same order as the input rows\npredictions = pd.DataFrame({\n    'Row_Number': range(1, len(university) + 1),\n    'Predicted_Price_INR_Lakhs': university_prediction\n})\npredictions.to_csv('decision_tree_university_predictions.csv', index=False)\nprint(result.T)\nprint(predictions.head())\nprint(predictions.shape)",
+        "approach": "Save the selected validation scores and final holdout scores for the group. Then predict the university rows. Download the notebook, variant_comparison.csv, your result CSV, both plot files and predictions from Colab’s Files panel.",
+        "whatToLookFor": [
+          "A one-row result CSV named after your model.",
+          "1,234 prediction rows in their original file order."
+        ],
+        "technicalNotes": "Validation scores describe the chosen variant before full-training refitting. Holdout scores describe the refitted model. The university file has no true prices, so cannot produce evaluation metrics. Row_Number is the 1-based input row position, not a source dataset ID.",
+        "commonMistakes": [
+          "Use the one-row result CSV on the group comparison page.",
+          "Compare validation to validation and holdout to holdout."
+        ],
+        "screenshotInstructions": "Capture the result table and prediction shape."
+      }
+    ],
+    "vivaQuestions": [
+      {
+        "question": "How does your model work?",
+        "answer": "The tree chooses splits that reduce squared error within the child groups. A leaf predicts the mean training target of its rows. If the target is log price, that mean is on the log scale until we reverse it."
+      },
+      {
+        "question": "Which parameters did you change?",
+        "answer": "Compare the unrestricted default tree with a depth limit of 8 and at least 5 rows per leaf. A restricted tree may generalize better."
+      },
+      {
+        "question": "What are this model’s limitations?",
+        "answer": "An unrestricted tree can overfit and change substantially when training rows change. A shallow tree may underfit. A single split is an association, not evidence of causation."
+      },
+      {
+        "question": "What are the training, validation and test sets for?",
+        "answer": "Development training teaches the four variants. Validation compares them and selects the settings and target transformation. The selected version is retrained on the full Assignment 1 training set and evaluated once on its labelled holdout. All members use the same files."
+      },
+      {
+        "question": "Why are there two extra tuning files?",
+        "answer": "Splitting already-imputed and scaled data would let validation rows influence training medians and scaling. The extra files were split from raw outer-training rows first and processed using development-training statistics only. The shared preparation notebook shows every step. Assignment 1 is not replaced."
+      },
+      {
+        "question": "Why compare Price and Log_Price?",
+        "answer": "This is the preprocessing variation: the target is used either directly or as log1p(Price). Logs compress large prices. np.expm1 reverses the transformation before computing errors. Both versions are scored in price units."
+      },
+      {
+        "question": "What does manual tuning mean here?",
+        "answer": "We compare two explicit parameter settings, each with two target choices. That gives four variants of one algorithm. The lowest validation RMSE wins. This is a small manual search, not an exhaustive search and not cross-validation."
+      },
+      {
+        "question": "Why use RMSE, MAE and R²?",
+        "answer": "RMSE is the main metric because larger price errors receive a larger penalty. MAE is average absolute error. Both use INR lakhs. R² compares squared error with predicting the evaluation-set mean. It can be negative and is not percentage accuracy."
+      },
+      {
+        "question": "How does the group compare its six algorithms?",
+        "answer": "Compare the chosen variants on the same validation set, using validation RMSE to select the group model and its holdout scores to assess generalization. You can also report the observed holdout ranking, but choosing from it makes it part of model selection."
+      },
+      {
+        "question": "What are the limitations?",
+        "answer": "One validation split is less stable than repeated cross-validation, and four variants cover only a small set of possibilities. Scores describe the kilometre-filtered population. The original mileage-unit and zero-value limitations remain, and earlier EDA saw the full dataset. These historical Indian prices do not establish current Sri Lankan prices."
+      },
+      {
+        "question": "Can we evaluate university test predictions?",
+        "answer": "The university test file has no Price labels. We preserve all 1,234 rows and produce predictions, but cannot calculate its RMSE, MAE or R²."
+      }
+    ]
+  },
+  {
+    "modelId": "svr",
+    "modelName": "Support Vector Regression",
+    "modelDescription": "A nonlinear regression function with a tolerance for small errors.",
+    "algorithmType": "Kernel regression",
+    "memberId": "bandara",
+    "memberName": "Bandara U.S.B.N.",
+    "studentId": "IT25103405",
+    "steps": [
+      {
+        "stepNumber": 1,
+        "title": "Load the data",
+        "code": "# Import libraries\nimport numpy as np\nimport pandas as pd\nimport matplotlib.pyplot as plt\nfrom sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score\n\n# Load training, validation and test data\ntuning_train = pd.read_csv('tuning_train.csv')\nvalidation = pd.read_csv('tuning_validation.csv')\ntrain = pd.read_csv('processed_train.csv')\ntest = pd.read_csv('processed_holdout.csv')\n\n# Check the number of rows and columns\nprint(tuning_train.shape)\nprint(validation.shape)\nprint(train.shape)\nprint(test.shape)\n\nfrom sklearn.svm import SVR",
+        "approach": "Upload the five CSV files from the starter ZIP to Colab. Run the cells in order.",
+        "whatToLookFor": [
+          "Tuning training: (3578, 14). Validation: (1199, 14).",
+          "Full training: (4777, 14). Labelled test: (1194, 14)."
+        ],
+        "technicalNotes": "tuning_train.csv and tuning_validation.csv are an extra split within the original training portion. They use development-training medians and scaling only. processed_train.csv and processed_holdout.csv are the existing Assignment 1 files. processed_university_test.csv is used for prediction at the end.",
+        "commonMistakes": [
+          "Do not split the combined processed archive again.",
+          "Keep all members on the same starter files."
+        ],
+        "screenshotInstructions": "Capture the four dataset shapes."
+      },
+      {
+        "stepNumber": 2,
+        "title": "Separate inputs and prices",
+        "code": "# Separate features and targets for tuning\nX_train = tuning_train.drop(columns=['Price', 'Log_Price'])\ny_train = tuning_train['Price']\ny_train_log = tuning_train['Log_Price']\n\n# Prepare the validation set\nX_val = validation.drop(columns=['Price', 'Log_Price'])\ny_val = validation['Price']\n\n# Prepare the full training set for the selected model\nX_final = train.drop(columns=['Price', 'Log_Price'])\ny_final = train['Price']\ny_final_log = train['Log_Price']\n\n# Prepare the labelled test set\nX_test = test.drop(columns=['Price', 'Log_Price'])\ny_test = test['Price']\n\nprint(X_train.shape)\nprint(X_val.shape)\nprint(X_test.shape)",
+        "approach": "X contains the car features, and y contains the price being predicted. Keep both Price and Log_Price out of X. The two target choices let you compare a preprocessing variation without changing the original 12 features.",
+        "whatToLookFor": [
+          "Each X table has 12 columns.",
+          "Development training and validation are used for choosing a variant. The labelled test stays unused until Step 5."
+        ],
+        "technicalNotes": "Log_Price was created with np.log1p(Price). For a log-target model, np.expm1(prediction) returns its prediction to the price scale. RMSE and MAE are always calculated on that price scale.",
+        "commonMistakes": [
+          "Including Price or Log_Price in X leaks the answer.",
+          "Do not apply another scaler to already processed features."
+        ],
+        "screenshotInstructions": "Capture the input shapes."
+      },
+      {
+        "stepNumber": 3,
+        "title": "Train the two baseline variants",
+        "code": "# Train with default settings using prices\nmodel1 = SVR(kernel='rbf')\nmodel1.fit(X_train, y_train)\n\n# Predict validation prices\nprediction1 = model1.predict(X_val)\n\n# Calculate validation scores\nrmse1 = np.sqrt(mean_squared_error(y_val, prediction1))\nmae1 = mean_absolute_error(y_val, prediction1)\nr2_1 = r2_score(y_val, prediction1)\nprint('Default + Price:', rmse1, mae1, r2_1)\n\n# Train with default settings using log prices\nmodel2 = SVR(kernel='rbf')\nmodel2.fit(X_train, y_train_log)\n\n# Predict validation prices and reverse the log transformation\nprediction2 = np.expm1(model2.predict(X_val))\n\n# Calculate validation scores\nrmse2 = np.sqrt(mean_squared_error(y_val, prediction2))\nmae2 = mean_absolute_error(y_val, prediction2)\nr2_2 = r2_score(y_val, prediction2)\nprint('Default + Log_Price:', rmse2, mae2, r2_2)",
+        "approach": "SVR fits a function with an epsilon-wide tolerance around it. Errors outside that tolerance are penalized. The RBF kernel represents nonlinear similarity between cars.\n\nmodel1 uses Price. model2 uses Log_Price. Both use default parameter settings and the same development-training rows. The code trains, predicts and calculates RMSE, MAE and R² directly.",
+        "whatToLookFor": [
+          "Two lines show validation RMSE, MAE and R², in that order.",
+          "Lower RMSE and MAE are better. Higher R² is better."
+        ],
+        "technicalNotes": "fit(X, y) trains the estimator. predict(X_val) estimates validation prices. np.sqrt(mean_squared_error(...)) calculates RMSE. Log predictions are reversed before scoring.",
+        "commonMistakes": [
+          "Do not score log predictions directly against prices.",
+          "R² is not classification accuracy."
+        ],
+        "screenshotInstructions": "Capture both baseline scores."
+      },
+      {
+        "stepNumber": 4,
+        "title": "Try changed settings and compare",
+        "code": "# Train with changed settings using prices\nmodel3 = SVR(kernel='rbf', C=10)\nmodel3.fit(X_train, y_train)\n\n# Predict validation prices\nprediction3 = model3.predict(X_val)\n\n# Calculate validation scores\nrmse3 = np.sqrt(mean_squared_error(y_val, prediction3))\nmae3 = mean_absolute_error(y_val, prediction3)\nr2_3 = r2_score(y_val, prediction3)\nprint('Changed settings + Price:', rmse3, mae3, r2_3)\n\n# Train with changed settings using log prices\nmodel4 = SVR(kernel='rbf', C=10)\nmodel4.fit(X_train, y_train_log)\n\n# Predict validation prices and reverse the log transformation\nprediction4 = np.expm1(model4.predict(X_val))\n\n# Calculate validation scores\nrmse4 = np.sqrt(mean_squared_error(y_val, prediction4))\nmae4 = mean_absolute_error(y_val, prediction4)\nr2_4 = r2_score(y_val, prediction4)\nprint('Changed settings + Log_Price:', rmse4, mae4, r2_4)\n\n# Compare the four variants\ncomparison = pd.DataFrame({\n    'Variant': ['Default + Price', 'Default + Log_Price',\n                'Changed settings + Price', 'Changed settings + Log_Price'],\n    'RMSE': [rmse1, rmse2, rmse3, rmse4],\n    'MAE': [mae1, mae2, mae3, mae4],\n    'R2': [r2_1, r2_2, r2_3, r2_4]\n})\nprint(comparison.sort_values('RMSE'))\ncomparison.to_csv('variant_comparison.csv', index=False)\n\n# Choose the variant with the lowest validation RMSE\nmodels = [model1, model2, model3, model4]\nbest_index = comparison['RMSE'].idxmin()\nprint('Selected variant:', comparison.loc[best_index, 'Variant'])",
+        "approach": "Compare the default C of 1 with 10. C controls the penalty for errors outside the epsilon tolerance. epsilon stays at 0.1 and has different meaning on the price and log-price scales.\n\nmodel3 and model4 repeat the Price and Log_Price comparison with those changed settings. The pandas table compares all four variants, and idxmin selects the row with the lowest validation RMSE.",
+        "whatToLookFor": [
+          "Four variants of your one assigned algorithm.",
+          "The selected row has the lowest validation RMSE. Default settings are allowed to win."
+        ],
+        "technicalNotes": "This is manual tuning. The list models has the same order as the comparison table: index 0 means model1, 1 means model2, 2 means model3 and 3 means model4. If RMSE ties exactly, idxmin keeps the first row. The small search is a limitation to discuss.",
+        "commonMistakes": [
+          "Changed settings are not guaranteed to be better.",
+          "Do not choose or change settings using final test scores."
+        ],
+        "screenshotInstructions": "Capture the comparison and chosen variant."
+      },
+      {
+        "stepNumber": 5,
+        "title": "Evaluate on the labelled test set",
+        "code": "# Select the model with the lowest validation RMSE\nbest_model = models[best_index]\n\n# Retrain on the full training set and predict test prices\n# Indices 1 and 3 are the log-price variants\nif best_index in [1, 3]:\n    best_model.fit(X_final, y_final_log)\n    test_prediction = np.expm1(best_model.predict(X_test))\n    train_prediction = np.expm1(best_model.predict(X_final))\nelse:\n    best_model.fit(X_final, y_final)\n    test_prediction = best_model.predict(X_test)\n    train_prediction = best_model.predict(X_final)\n\n# Calculate scores in the original price units\nrmse = np.sqrt(mean_squared_error(y_test, test_prediction))\nmae = mean_absolute_error(y_test, test_prediction)\nr2 = r2_score(y_test, test_prediction)\ntrain_rmse = np.sqrt(mean_squared_error(y_final, train_prediction))\n\nprint('Training RMSE:', train_rmse)\nprint('Test RMSE:', rmse)\nprint('Test MAE:', mae)\nprint('Test R2:', r2)\n\n# Plot actual prices against predicted prices\nplt.figure()\nplt.scatter(y_test, test_prediction, alpha=0.4)\nplt.plot([0, y_test.max()], [0, y_test.max()], 'r--')\nplt.xlabel('Actual price (INR lakhs)')\nplt.ylabel('Predicted price (INR lakhs)')\nplt.title('Actual and predicted prices')\nplt.savefig('prediction_plot.png', dpi=150)\nplt.show()\n\n# Plot residuals to check the prediction errors\nplt.figure()\nplt.scatter(test_prediction, y_test - test_prediction, alpha=0.4)\nplt.axhline(0, color='red', linestyle='--')\nplt.xlabel('Predicted price (INR lakhs)')\nplt.ylabel('Actual minus predicted price (INR lakhs)')\nplt.title('Prediction errors')\nplt.savefig('residual_plot.png', dpi=150)\nplt.show()",
+        "approach": "Retrain the selected model using the full Assignment 1 training file. Evaluate it once on processed_holdout.csv. This uses all outer-training rows, including the earlier validation portion, while the labelled test stays separate.",
+        "whatToLookFor": [
+          "Training RMSE and the three final test scores.",
+          "Points near the diagonal are closer predictions.",
+          "Positive residuals mean the model underpredicted."
+        ],
+        "technicalNotes": "Indices 1 and 3 identify log-target variants. Their predictions need np.expm1. A large training/holdout gap can indicate overfitting; distance-weighted KNN can have tiny training error because a training row is its own nearest neighbour.",
+        "commonMistakes": [
+          "Do not return to Step 4 to chase better test scores.",
+          "Scores apply to the retained kilometre range."
+        ],
+        "screenshotInstructions": "Capture final scores and both plots."
+      },
+      {
+        "stepNumber": 6,
+        "title": "Save results and make predictions",
+        "code": "# Save the selected variant and evaluation scores\nresult = pd.DataFrame({\n    'Model': ['Support Vector Regression'],\n    'Model_ID': ['svr'],\n    'Student_ID': ['IT25103405'],\n    'Protocol': ['cars12-v3-validation42'],\n    'Variant': [comparison.loc[best_index, 'Variant']],\n    'Validation_RMSE': [comparison.loc[best_index, 'RMSE']],\n    'Validation_MAE': [comparison.loc[best_index, 'MAE']],\n    'Validation_R2': [comparison.loc[best_index, 'R2']],\n    'Train_RMSE': [train_rmse],\n    'Holdout_RMSE': [rmse], 'Holdout_MAE': [mae], 'Holdout_R2': [r2],\n    'Train_Rows': [len(X_final)], 'Holdout_Rows': [len(X_test)],\n    'Tuning_Rows': [len(X_train)], 'Validation_Rows': [len(X_val)],\n    'Features': [X_final.shape[1]]\n})\nresult.to_csv('svr_result.csv', index=False)\n\n# Predict prices for the unlabelled university data\nuniversity = pd.read_csv('processed_university_test.csv')\nuniversity_prediction = best_model.predict(university)\nif best_index in [1, 3]:\n    university_prediction = np.expm1(university_prediction)\n\n# Keep predictions in the same order as the input rows\npredictions = pd.DataFrame({\n    'Row_Number': range(1, len(university) + 1),\n    'Predicted_Price_INR_Lakhs': university_prediction\n})\npredictions.to_csv('svr_university_predictions.csv', index=False)\nprint(result.T)\nprint(predictions.head())\nprint(predictions.shape)",
+        "approach": "Save the selected validation scores and final holdout scores for the group. Then predict the university rows. Download the notebook, variant_comparison.csv, your result CSV, both plot files and predictions from Colab’s Files panel.",
+        "whatToLookFor": [
+          "A one-row result CSV named after your model.",
+          "1,234 prediction rows in their original file order."
+        ],
+        "technicalNotes": "Validation scores describe the chosen variant before full-training refitting. Holdout scores describe the refitted model. The university file has no true prices, so cannot produce evaluation metrics. Row_Number is the 1-based input row position, not a source dataset ID.",
+        "commonMistakes": [
+          "Use the one-row result CSV on the group comparison page.",
+          "Compare validation to validation and holdout to holdout."
+        ],
+        "screenshotInstructions": "Capture the result table and prediction shape."
+      }
+    ],
+    "vivaQuestions": [
+      {
+        "question": "How does your model work?",
+        "answer": "SVR fits a function with an epsilon-wide tolerance around it. Errors outside that tolerance are penalized. The RBF kernel represents nonlinear similarity between cars."
+      },
+      {
+        "question": "Which parameters did you change?",
+        "answer": "Compare the default C of 1 with 10. C controls the penalty for errors outside the epsilon tolerance. epsilon stays at 0.1 and has different meaning on the price and log-price scales."
+      },
+      {
+        "question": "What are this model’s limitations?",
+        "answer": "SVR is sensitive to feature scales and settings. We use the same five scaled numeric columns as Assignment 1; ownership and seats retain their original units. This scaling choice is a limitation to discuss, not an excuse to tune on the hold-out."
+      },
+      {
+        "question": "What are the training, validation and test sets for?",
+        "answer": "Development training teaches the four variants. Validation compares them and selects the settings and target transformation. The selected version is retrained on the full Assignment 1 training set and evaluated once on its labelled holdout. All members use the same files."
+      },
+      {
+        "question": "Why are there two extra tuning files?",
+        "answer": "Splitting already-imputed and scaled data would let validation rows influence training medians and scaling. The extra files were split from raw outer-training rows first and processed using development-training statistics only. The shared preparation notebook shows every step. Assignment 1 is not replaced."
+      },
+      {
+        "question": "Why compare Price and Log_Price?",
+        "answer": "This is the preprocessing variation: the target is used either directly or as log1p(Price). Logs compress large prices. np.expm1 reverses the transformation before computing errors. Both versions are scored in price units."
+      },
+      {
+        "question": "What does manual tuning mean here?",
+        "answer": "We compare two explicit parameter settings, each with two target choices. That gives four variants of one algorithm. The lowest validation RMSE wins. This is a small manual search, not an exhaustive search and not cross-validation."
+      },
+      {
+        "question": "Why use RMSE, MAE and R²?",
+        "answer": "RMSE is the main metric because larger price errors receive a larger penalty. MAE is average absolute error. Both use INR lakhs. R² compares squared error with predicting the evaluation-set mean. It can be negative and is not percentage accuracy."
+      },
+      {
+        "question": "How does the group compare its six algorithms?",
+        "answer": "Compare the chosen variants on the same validation set, using validation RMSE to select the group model and its holdout scores to assess generalization. You can also report the observed holdout ranking, but choosing from it makes it part of model selection."
+      },
+      {
+        "question": "What are the limitations?",
+        "answer": "One validation split is less stable than repeated cross-validation, and four variants cover only a small set of possibilities. Scores describe the kilometre-filtered population. The original mileage-unit and zero-value limitations remain, and earlier EDA saw the full dataset. These historical Indian prices do not establish current Sri Lankan prices."
+      },
+      {
+        "question": "Can we evaluate university test predictions?",
+        "answer": "The university test file has no Price labels. We preserve all 1,234 rows and produce predictions, but cannot calculate its RMSE, MAE or R²."
+      }
+    ]
+  },
+  {
+    "modelId": "knn",
+    "modelName": "K-Nearest Neighbors",
+    "modelDescription": "Predicts from the targets of the most similar training cars.",
+    "algorithmType": "Neighbour-based regression",
+    "memberId": "wijesinghe",
+    "memberName": "Wijesinghe W.A.D.M.C.L.",
+    "studentId": "IT25100607",
+    "steps": [
+      {
+        "stepNumber": 1,
+        "title": "Load the data",
+        "code": "# Import libraries\nimport numpy as np\nimport pandas as pd\nimport matplotlib.pyplot as plt\nfrom sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score\n\n# Load training, validation and test data\ntuning_train = pd.read_csv('tuning_train.csv')\nvalidation = pd.read_csv('tuning_validation.csv')\ntrain = pd.read_csv('processed_train.csv')\ntest = pd.read_csv('processed_holdout.csv')\n\n# Check the number of rows and columns\nprint(tuning_train.shape)\nprint(validation.shape)\nprint(train.shape)\nprint(test.shape)\n\nfrom sklearn.neighbors import KNeighborsRegressor",
+        "approach": "Upload the five CSV files from the starter ZIP to Colab. Run the cells in order.",
+        "whatToLookFor": [
+          "Tuning training: (3578, 14). Validation: (1199, 14).",
+          "Full training: (4777, 14). Labelled test: (1194, 14)."
+        ],
+        "technicalNotes": "tuning_train.csv and tuning_validation.csv are an extra split within the original training portion. They use development-training medians and scaling only. processed_train.csv and processed_holdout.csv are the existing Assignment 1 files. processed_university_test.csv is used for prediction at the end.",
+        "commonMistakes": [
+          "Do not split the combined processed archive again.",
+          "Keep all members on the same starter files."
+        ],
+        "screenshotInstructions": "Capture the four dataset shapes."
+      },
+      {
+        "stepNumber": 2,
+        "title": "Separate inputs and prices",
+        "code": "# Separate features and targets for tuning\nX_train = tuning_train.drop(columns=['Price', 'Log_Price'])\ny_train = tuning_train['Price']\ny_train_log = tuning_train['Log_Price']\n\n# Prepare the validation set\nX_val = validation.drop(columns=['Price', 'Log_Price'])\ny_val = validation['Price']\n\n# Prepare the full training set for the selected model\nX_final = train.drop(columns=['Price', 'Log_Price'])\ny_final = train['Price']\ny_final_log = train['Log_Price']\n\n# Prepare the labelled test set\nX_test = test.drop(columns=['Price', 'Log_Price'])\ny_test = test['Price']\n\nprint(X_train.shape)\nprint(X_val.shape)\nprint(X_test.shape)",
+        "approach": "X contains the car features, and y contains the price being predicted. Keep both Price and Log_Price out of X. The two target choices let you compare a preprocessing variation without changing the original 12 features.",
+        "whatToLookFor": [
+          "Each X table has 12 columns.",
+          "Development training and validation are used for choosing a variant. The labelled test stays unused until Step 5."
+        ],
+        "technicalNotes": "Log_Price was created with np.log1p(Price). For a log-target model, np.expm1(prediction) returns its prediction to the price scale. RMSE and MAE are always calculated on that price scale.",
+        "commonMistakes": [
+          "Including Price or Log_Price in X leaks the answer.",
+          "Do not apply another scaler to already processed features."
+        ],
+        "screenshotInstructions": "Capture the input shapes."
+      },
+      {
+        "stepNumber": 3,
+        "title": "Train the two baseline variants",
+        "code": "# Train with default settings using prices\nmodel1 = KNeighborsRegressor()\nmodel1.fit(X_train, y_train)\n\n# Predict validation prices\nprediction1 = model1.predict(X_val)\n\n# Calculate validation scores\nrmse1 = np.sqrt(mean_squared_error(y_val, prediction1))\nmae1 = mean_absolute_error(y_val, prediction1)\nr2_1 = r2_score(y_val, prediction1)\nprint('Default + Price:', rmse1, mae1, r2_1)\n\n# Train with default settings using log prices\nmodel2 = KNeighborsRegressor()\nmodel2.fit(X_train, y_train_log)\n\n# Predict validation prices and reverse the log transformation\nprediction2 = np.expm1(model2.predict(X_val))\n\n# Calculate validation scores\nrmse2 = np.sqrt(mean_squared_error(y_val, prediction2))\nmae2 = mean_absolute_error(y_val, prediction2)\nr2_2 = r2_score(y_val, prediction2)\nprint('Default + Log_Price:', rmse2, mae2, r2_2)",
+        "approach": "KNN stores the training cars. At prediction time it finds nearby cars in feature space and averages their targets. Distance weighting gives nearer cars more influence.\n\nmodel1 uses Price. model2 uses Log_Price. Both use default parameter settings and the same development-training rows. The code trains, predicts and calculates RMSE, MAE and R² directly.",
+        "whatToLookFor": [
+          "Two lines show validation RMSE, MAE and R², in that order.",
+          "Lower RMSE and MAE are better. Higher R² is better."
+        ],
+        "technicalNotes": "fit(X, y) trains the estimator. predict(X_val) estimates validation prices. np.sqrt(mean_squared_error(...)) calculates RMSE. Log predictions are reversed before scoring.",
+        "commonMistakes": [
+          "Do not score log predictions directly against prices.",
+          "R² is not classification accuracy."
+        ],
+        "screenshotInstructions": "Capture both baseline scores."
+      },
+      {
+        "stepNumber": 4,
+        "title": "Try changed settings and compare",
+        "code": "# Train with changed settings using prices\nmodel3 = KNeighborsRegressor(n_neighbors=9, weights='distance')\nmodel3.fit(X_train, y_train)\n\n# Predict validation prices\nprediction3 = model3.predict(X_val)\n\n# Calculate validation scores\nrmse3 = np.sqrt(mean_squared_error(y_val, prediction3))\nmae3 = mean_absolute_error(y_val, prediction3)\nr2_3 = r2_score(y_val, prediction3)\nprint('Changed settings + Price:', rmse3, mae3, r2_3)\n\n# Train with changed settings using log prices\nmodel4 = KNeighborsRegressor(n_neighbors=9, weights='distance')\nmodel4.fit(X_train, y_train_log)\n\n# Predict validation prices and reverse the log transformation\nprediction4 = np.expm1(model4.predict(X_val))\n\n# Calculate validation scores\nrmse4 = np.sqrt(mean_squared_error(y_val, prediction4))\nmae4 = mean_absolute_error(y_val, prediction4)\nr2_4 = r2_score(y_val, prediction4)\nprint('Changed settings + Log_Price:', rmse4, mae4, r2_4)\n\n# Compare the four variants\ncomparison = pd.DataFrame({\n    'Variant': ['Default + Price', 'Default + Log_Price',\n                'Changed settings + Price', 'Changed settings + Log_Price'],\n    'RMSE': [rmse1, rmse2, rmse3, rmse4],\n    'MAE': [mae1, mae2, mae3, mae4],\n    'R2': [r2_1, r2_2, r2_3, r2_4]\n})\nprint(comparison.sort_values('RMSE'))\ncomparison.to_csv('variant_comparison.csv', index=False)\n\n# Choose the variant with the lowest validation RMSE\nmodels = [model1, model2, model3, model4]\nbest_index = comparison['RMSE'].idxmin()\nprint('Selected variant:', comparison.loc[best_index, 'Variant'])",
+        "approach": "Compare the default 5 equally weighted neighbours with 9 neighbours weighted by distance. Nearby cars then have more influence.\n\nmodel3 and model4 repeat the Price and Log_Price comparison with those changed settings. The pandas table compares all four variants, and idxmin selects the row with the lowest validation RMSE.",
+        "whatToLookFor": [
+          "Four variants of your one assigned algorithm.",
+          "The selected row has the lowest validation RMSE. Default settings are allowed to win."
+        ],
+        "technicalNotes": "This is manual tuning. The list models has the same order as the comparison table: index 0 means model1, 1 means model2, 2 means model3 and 3 means model4. If RMSE ties exactly, idxmin keeps the first row. The small search is a limitation to discuss.",
+        "commonMistakes": [
+          "Changed settings are not guaranteed to be better.",
+          "Do not choose or change settings using final test scores."
+        ],
+        "screenshotInstructions": "Capture the comparison and chosen variant."
+      },
+      {
+        "stepNumber": 5,
+        "title": "Evaluate on the labelled test set",
+        "code": "# Select the model with the lowest validation RMSE\nbest_model = models[best_index]\n\n# Retrain on the full training set and predict test prices\n# Indices 1 and 3 are the log-price variants\nif best_index in [1, 3]:\n    best_model.fit(X_final, y_final_log)\n    test_prediction = np.expm1(best_model.predict(X_test))\n    train_prediction = np.expm1(best_model.predict(X_final))\nelse:\n    best_model.fit(X_final, y_final)\n    test_prediction = best_model.predict(X_test)\n    train_prediction = best_model.predict(X_final)\n\n# Calculate scores in the original price units\nrmse = np.sqrt(mean_squared_error(y_test, test_prediction))\nmae = mean_absolute_error(y_test, test_prediction)\nr2 = r2_score(y_test, test_prediction)\ntrain_rmse = np.sqrt(mean_squared_error(y_final, train_prediction))\n\nprint('Training RMSE:', train_rmse)\nprint('Test RMSE:', rmse)\nprint('Test MAE:', mae)\nprint('Test R2:', r2)\n\n# Plot actual prices against predicted prices\nplt.figure()\nplt.scatter(y_test, test_prediction, alpha=0.4)\nplt.plot([0, y_test.max()], [0, y_test.max()], 'r--')\nplt.xlabel('Actual price (INR lakhs)')\nplt.ylabel('Predicted price (INR lakhs)')\nplt.title('Actual and predicted prices')\nplt.savefig('prediction_plot.png', dpi=150)\nplt.show()\n\n# Plot residuals to check the prediction errors\nplt.figure()\nplt.scatter(test_prediction, y_test - test_prediction, alpha=0.4)\nplt.axhline(0, color='red', linestyle='--')\nplt.xlabel('Predicted price (INR lakhs)')\nplt.ylabel('Actual minus predicted price (INR lakhs)')\nplt.title('Prediction errors')\nplt.savefig('residual_plot.png', dpi=150)\nplt.show()",
+        "approach": "Retrain the selected model using the full Assignment 1 training file. Evaluate it once on processed_holdout.csv. This uses all outer-training rows, including the earlier validation portion, while the labelled test stays separate.",
+        "whatToLookFor": [
+          "Training RMSE and the three final test scores.",
+          "Points near the diagonal are closer predictions.",
+          "Positive residuals mean the model underpredicted."
+        ],
+        "technicalNotes": "Indices 1 and 3 identify log-target variants. Their predictions need np.expm1. A large training/holdout gap can indicate overfitting; distance-weighted KNN can have tiny training error because a training row is its own nearest neighbour.",
+        "commonMistakes": [
+          "Do not return to Step 4 to chase better test scores.",
+          "Scores apply to the retained kilometre range."
+        ],
+        "screenshotInstructions": "Capture final scores and both plots."
+      },
+      {
+        "stepNumber": 6,
+        "title": "Save results and make predictions",
+        "code": "# Save the selected variant and evaluation scores\nresult = pd.DataFrame({\n    'Model': ['K-Nearest Neighbors'],\n    'Model_ID': ['knn'],\n    'Student_ID': ['IT25100607'],\n    'Protocol': ['cars12-v3-validation42'],\n    'Variant': [comparison.loc[best_index, 'Variant']],\n    'Validation_RMSE': [comparison.loc[best_index, 'RMSE']],\n    'Validation_MAE': [comparison.loc[best_index, 'MAE']],\n    'Validation_R2': [comparison.loc[best_index, 'R2']],\n    'Train_RMSE': [train_rmse],\n    'Holdout_RMSE': [rmse], 'Holdout_MAE': [mae], 'Holdout_R2': [r2],\n    'Train_Rows': [len(X_final)], 'Holdout_Rows': [len(X_test)],\n    'Tuning_Rows': [len(X_train)], 'Validation_Rows': [len(X_val)],\n    'Features': [X_final.shape[1]]\n})\nresult.to_csv('knn_result.csv', index=False)\n\n# Predict prices for the unlabelled university data\nuniversity = pd.read_csv('processed_university_test.csv')\nuniversity_prediction = best_model.predict(university)\nif best_index in [1, 3]:\n    university_prediction = np.expm1(university_prediction)\n\n# Keep predictions in the same order as the input rows\npredictions = pd.DataFrame({\n    'Row_Number': range(1, len(university) + 1),\n    'Predicted_Price_INR_Lakhs': university_prediction\n})\npredictions.to_csv('knn_university_predictions.csv', index=False)\nprint(result.T)\nprint(predictions.head())\nprint(predictions.shape)",
+        "approach": "Save the selected validation scores and final holdout scores for the group. Then predict the university rows. Download the notebook, variant_comparison.csv, your result CSV, both plot files and predictions from Colab’s Files panel.",
+        "whatToLookFor": [
+          "A one-row result CSV named after your model.",
+          "1,234 prediction rows in their original file order."
+        ],
+        "technicalNotes": "Validation scores describe the chosen variant before full-training refitting. Holdout scores describe the refitted model. The university file has no true prices, so cannot produce evaluation metrics. Row_Number is the 1-based input row position, not a source dataset ID.",
+        "commonMistakes": [
+          "Use the one-row result CSV on the group comparison page.",
+          "Compare validation to validation and holdout to holdout."
+        ],
+        "screenshotInstructions": "Capture the result table and prediction shape."
+      }
+    ],
+    "vivaQuestions": [
+      {
+        "question": "How does your model work?",
+        "answer": "KNN stores the training cars. At prediction time it finds nearby cars in feature space and averages their targets. Distance weighting gives nearer cars more influence."
+      },
+      {
+        "question": "Which parameters did you change?",
+        "answer": "Compare the default 5 equally weighted neighbours with 9 neighbours weighted by distance. Nearby cars then have more influence."
+      },
+      {
+        "question": "What are this model’s limitations?",
+        "answer": "Small K can follow noise; large K can smooth away useful local differences. Distances depend on scaling and feature choice. We retain Assignment 1’s five scaled columns, with seats and ownership in their original units."
+      },
+      {
+        "question": "What are the training, validation and test sets for?",
+        "answer": "Development training teaches the four variants. Validation compares them and selects the settings and target transformation. The selected version is retrained on the full Assignment 1 training set and evaluated once on its labelled holdout. All members use the same files."
+      },
+      {
+        "question": "Why are there two extra tuning files?",
+        "answer": "Splitting already-imputed and scaled data would let validation rows influence training medians and scaling. The extra files were split from raw outer-training rows first and processed using development-training statistics only. The shared preparation notebook shows every step. Assignment 1 is not replaced."
+      },
+      {
+        "question": "Why compare Price and Log_Price?",
+        "answer": "This is the preprocessing variation: the target is used either directly or as log1p(Price). Logs compress large prices. np.expm1 reverses the transformation before computing errors. Both versions are scored in price units."
+      },
+      {
+        "question": "What does manual tuning mean here?",
+        "answer": "We compare two explicit parameter settings, each with two target choices. That gives four variants of one algorithm. The lowest validation RMSE wins. This is a small manual search, not an exhaustive search and not cross-validation."
+      },
+      {
+        "question": "Why use RMSE, MAE and R²?",
+        "answer": "RMSE is the main metric because larger price errors receive a larger penalty. MAE is average absolute error. Both use INR lakhs. R² compares squared error with predicting the evaluation-set mean. It can be negative and is not percentage accuracy."
+      },
+      {
+        "question": "How does the group compare its six algorithms?",
+        "answer": "Compare the chosen variants on the same validation set, using validation RMSE to select the group model and its holdout scores to assess generalization. You can also report the observed holdout ranking, but choosing from it makes it part of model selection."
+      },
+      {
+        "question": "What are the limitations?",
+        "answer": "One validation split is less stable than repeated cross-validation, and four variants cover only a small set of possibilities. Scores describe the kilometre-filtered population. The original mileage-unit and zero-value limitations remain, and earlier EDA saw the full dataset. These historical Indian prices do not establish current Sri Lankan prices."
+      },
+      {
+        "question": "Can we evaluate university test predictions?",
+        "answer": "The university test file has no Price labels. We preserve all 1,234 rows and produce predictions, but cannot calculate its RMSE, MAE or R²."
+      }
+    ]
+  }
+]

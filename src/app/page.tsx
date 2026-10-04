@@ -1,61 +1,46 @@
 import Link from 'next/link';
-import React from 'react';
-
-const members = [
-  { memberId: 'amarasekara', name: 'Amarasekara I.S.Y.', studentId: 'IT25101702', modelId: 'ridge', modelName: 'Ridge Regression' },
-  { memberId: 'indusara', name: 'Indusara L.G.S.', studentId: 'IT25102517', modelId: 'gradient_boosting', modelName: 'Gradient Boosting' },
-  { memberId: 'gunathilake', name: 'Gunathilake P.G.K.I.', studentId: 'IT25103600', modelId: 'random_forest', modelName: 'Random Forest' },
-  { memberId: 'wijerathna', name: 'Wijerathna K.G.C.J.', studentId: 'IT25101522', modelId: 'decision_tree', modelName: 'Decision Tree' },
-  { memberId: 'bandara', name: 'Bandara U.S.B.N.', studentId: 'IT25103405', modelId: 'svr', modelName: 'SVR (Support Vector)' },
-  { memberId: 'wijesinghe', name: 'Wijesinghe W.A.D.M.C.L.', studentId: 'IT25100607', modelId: 'knn', modelName: 'KNN Regressor' },
-];
+import { models } from '@/lib/models-data';
+import MetricsGuide from '@/components/MetricsGuide';
 
 export default function Home() {
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 space-y-12">
-      <div className="text-center space-y-4">
-        <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight">AIML Model Training Guide</h1>
-        <p className="text-xl text-slate-400">Used Cars Price Prediction - Progress Review II</p>
+  return <main className="mx-auto max-w-6xl px-5 py-10 sm:px-8 sm:py-16">
+    <nav className="mb-12 flex flex-wrap items-center justify-between gap-4 text-sm">
+      <span className="font-semibold tracking-widest text-blue-300">IT2011 · USED CAR PRICES</span>
+      <div className="flex gap-5"><Link className="text-slate-300 hover:text-white" href="/compare">Group comparison</Link><Link className="text-slate-400 hover:text-white" href="/admin">Screenshots</Link></div>
+    </nav>
+    <header className="max-w-3xl space-y-5">
+      <p className="text-sm font-semibold text-emerald-400">ASSIGNMENT 2 · MEMBER GUIDE</p>
+      <h1 className="text-4xl font-bold leading-tight tracking-tight sm:text-5xl">Train your model.<br/>Understand your results.</h1>
+      <p className="text-lg leading-relaxed text-slate-400">One algorithm per member. Follow six Colab steps, compare your model’s variants, and bring a consistent set of results to the group.</p>
+    </header>
+    <section className="my-10 rounded-2xl border border-slate-700 bg-slate-900 p-6 sm:p-8" aria-labelledby="setup-title">
+      <div className="flex flex-wrap items-start justify-between gap-5">
+        <div><h2 id="setup-title" className="text-xl font-semibold">Start in Google Colab</h2><p className="mt-2 text-slate-400">Same 12 features. Same split. Same scoring rules.</p></div>
+        <a href="/downloads/colab-starter-files.zip" download className="rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-500">Download starter files ↓</a>
       </div>
-
-      <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl max-w-2xl w-full">
-        <h2 className="text-lg font-semibold text-white mb-4">Google Colab Setup Instructions:</h2>
-        <ol className="list-decimal list-inside space-y-2 text-slate-300">
-          <li>Open Google Colab (<a href="https://colab.research.google.com" target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">colab.research.google.com</a>)</li>
-          <li>Create a New Notebook</li>
-          <li>Click Files icon on left sidebar</li>
-          <li>Upload <code className="bg-slate-800 px-1 py-0.5 rounded text-sm text-pink-400">final_processed_cars.csv</code></li>
-          <li>Select your name below to see your model's code</li>
-        </ol>
-      </div>
-
-      <div className="space-y-6 w-full max-w-5xl">
-        <h2 className="text-2xl font-semibold text-center text-slate-200">Select Your Name to Begin</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {members.map((m) => (
-            <Link key={m.memberId} href={`/guide/${m.modelId}?member=${m.memberId}`}>
-              <div className="group bg-slate-900 border border-slate-800 rounded-xl p-6 hover:bg-slate-800 hover:border-blue-500/50 hover:scale-[1.02] transition-all duration-200 cursor-pointer flex flex-col justify-between h-full relative overflow-hidden">
-                <div>
-                  <h3 className="font-bold text-lg text-white group-hover:text-blue-400 transition-colors">{m.name}</h3>
-                  <p className="text-sm text-slate-500 mb-4">{m.studentId}</p>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                    {m.modelName}
-                  </span>
-                  <span className="text-slate-600 group-hover:text-blue-400 transition-colors">→</span>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </div>
-
-      <div className="pt-8">
-        <Link href="/admin" className="text-sm text-slate-500 hover:text-slate-300 transition-colors">
-          Admin Dashboard →
-        </Link>
-      </div>
-    </div>
-  );
+      <ol className="mt-6 list-inside list-decimal space-y-3 text-slate-300">
+        <li>Extract the starter ZIP on your computer.</li>
+        <li>Select your name below and download your notebook.</li>
+        <li>Open <a className="text-blue-300 underline" href="https://colab.research.google.com" target="_blank" rel="noreferrer">Google Colab</a>, choose File → Upload notebook, and upload that notebook.</li>
+        <li>In Colab’s Files panel, upload all five CSVs. Run the cells in order.</li>
+      </ol>
+      <p className="mt-5 text-sm leading-relaxed text-slate-400">The ZIP contains tuning_train.csv, tuning_validation.csv, processed_train.csv, processed_holdout.csv and processed_university_test.csv. Use the tuning pair to compare four variants, then retrain on the full training file and evaluate on the labelled holdout.</p>
+      <details className="mt-4 text-sm text-slate-400"><summary className="cursor-pointer text-blue-300">Where did the tuning files come from?</summary><p className="mt-3">The original training portion was split again before fitting medians or scaling. The two tuning files use development-training statistics only. Your Assignment 1 files and 12 features are retained. A single validation split is easier to follow but less stable than repeated cross-validation.</p><a href="/downloads/shared-validation-preparation.ipynb" download className="mt-3 inline-block text-blue-300 underline">Shared validation preparation notebook</a></details>
+    </section>
+    <MetricsGuide />
+    <section className="mt-12" aria-labelledby="members-title">
+      <h2 id="members-title" className="mb-6 text-2xl font-semibold">Choose your guide</h2>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{models.map((m,i) =>
+        <Link key={m.modelId} href={`/guide/${m.modelId}`} className="group rounded-xl border border-slate-800 bg-slate-900 p-6 transition hover:border-blue-500 focus-visible:outline-2 focus-visible:outline-blue-400">
+          <div className="mb-5 flex justify-between text-sm text-slate-500"><span>0{i+1}</span><span>6 steps + viva →</span></div>
+          <h3 className="text-xl font-semibold group-hover:text-blue-300">{m.modelName}</h3>
+          <p className="mt-3 text-slate-300">{m.memberName}</p><p className="mt-1 text-sm text-slate-500">{m.studentId}</p>
+          <p className="mt-4 text-sm leading-relaxed text-slate-400">{m.modelDescription}</p>
+        </Link>)}</div>
+    </section>
+    <section className="mt-10 border-t border-slate-800 pt-8 text-sm leading-relaxed text-slate-400">
+      <h2 className="mb-2 text-lg font-semibold text-slate-200">When everyone finishes</h2>
+      <p>Collect each member’s result CSV, four-variant comparison table and notebook. Use the <Link href="/compare" className="text-blue-300 underline">group comparison</Link> to rank the chosen variants. Keep the university test predictions separate: that file has no Price labels.</p>
+    </section>
+  </main>;
 }

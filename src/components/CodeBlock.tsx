@@ -10,14 +10,17 @@ interface CodeBlockProps {
 
 export default function CodeBlock({ code, title, stepNumber }: CodeBlockProps) {
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState(false);
 
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(code);
       setCopied(true);
+      setCopyError(false);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.error('Failed to copy code', err);
+      setCopyError(true);
     }
   };
 
@@ -38,10 +41,10 @@ export default function CodeBlock({ code, title, stepNumber }: CodeBlockProps) {
               : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
           }`}
         >
-          {copied ? 'Copied!' : 'Copy'}
+          {copyError ? 'Select and copy below' : copied ? 'Copied!' : 'Copy cell'}
         </button>
       </div>
-      <div className="p-4 overflow-x-auto">
+      <div className="max-h-[36rem] overflow-auto p-4">
         <pre className="font-mono text-sm text-slate-300">
           <code>{code}</code>
         </pre>

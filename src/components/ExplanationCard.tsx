@@ -20,7 +20,7 @@ export default function ExplanationCard({
   const [openSection, setOpenSection] = useState({
     approach: true,
     lookFor: true,
-    technical: false,
+    technical: true,
     mistakes: false,
   });
 
@@ -36,13 +36,13 @@ export default function ExplanationCard({
           onClick={() => toggleSection('approach')}
           className="flex w-full items-center justify-between py-2 text-left text-slate-200 font-semibold focus:outline-none"
         >
-          <span>🎯 Approach & Purpose</span>
+          <span>🎯 What to do and why</span>
           <span className="text-slate-400 text-sm">
             {openSection.approach ? '▼' : '▶'}
           </span>
         </button>
         {openSection.approach && (
-          <div className="pb-3 text-slate-400 text-sm pl-2">
+          <div className="pb-3 text-slate-400 text-sm pl-2 whitespace-pre-line leading-relaxed">
             {approach}
           </div>
         )}
@@ -60,7 +60,7 @@ export default function ExplanationCard({
           </span>
         </button>
         {openSection.lookFor && (
-          <ul className="pb-3 list-disc list-inside text-slate-400 text-sm pl-2">
+          <ul className="pb-3 list-disc list-inside text-slate-400 text-sm pl-2 whitespace-pre-line leading-relaxed">
             {whatToLookFor.map((item, idx) => (
               <li key={idx} className="mb-1">{item}</li>
             ))}
@@ -74,13 +74,13 @@ export default function ExplanationCard({
           onClick={() => toggleSection('technical')}
           className="flex w-full items-center justify-between py-2 text-left text-slate-200 font-semibold focus:outline-none border-t border-slate-700/50"
         >
-          <span>🔬 Technical Deep Dive</span>
+          <span>🔬 Understand the code</span>
           <span className="text-slate-400 text-sm">
             {openSection.technical ? '▼' : '▶'}
           </span>
         </button>
         {openSection.technical && (
-          <div className="pb-3 text-slate-400 text-sm pl-2">
+          <div className="pb-3 text-slate-400 text-sm pl-2 whitespace-pre-line leading-relaxed">
             {technicalNotes}
           </div>
         )}
@@ -98,7 +98,7 @@ export default function ExplanationCard({
           </span>
         </button>
         {openSection.mistakes && (
-          <ul className="pb-3 list-disc list-inside text-slate-400 text-sm pl-2">
+          <ul className="pb-3 list-disc list-inside text-slate-400 text-sm pl-2 whitespace-pre-line leading-relaxed">
             {commonMistakes.map((item, idx) => (
               <li key={idx} className="mb-1">{item}</li>
             ))}

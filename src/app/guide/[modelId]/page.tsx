@@ -1,180 +1,44 @@
 'use client';
-
-import React, { useEffect, useState, Suspense } from 'react';
-import { useParams, useSearchParams } from 'next/navigation';
-import { models, getModelById, members } from '@/lib/models-data';
-import type { ModelData, Step } from '@/lib/models-data';
+import { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
+import Link from 'next/link';
+import { getModelById } from '@/lib/models-data';
 import Sidebar from '@/components/Sidebar';
 import ExplanationCard from '@/components/ExplanationCard';
 import CodeBlock from '@/components/CodeBlock';
 import ScreenshotUploader from '@/components/ScreenshotUploader';
 import VivaSection from '@/components/VivaSection';
 
-interface ScreenshotRecord {
-  step_id: number;
-  file_name: string;
-  pinata_url: string;
-  uploaded_at: string;
-}
-
-function GuideContent() {
-  const params = useParams();
-  const searchParams = useSearchParams();
-  const modelId = params.modelId as string;
-  const memberId = searchParams.get('member') || '';
-
-  const [currentStep, setCurrentStep] = useState(0);
-  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
-  const [screenshots, setScreenshots] = useState<ScreenshotRecord[]>([]);
-
-  const model = getModelById(modelId);
-  const member = members.find(m => m.memberId === memberId);
-
-  useEffect(() => {
-    if (!memberId) return;
-
-    fetch(`/api/screenshots?member_id=${memberId}`)
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data)) {
-          setScreenshots(data);
-          const completed = data.map((d: ScreenshotRecord) => d.step_id);
-          setCompletedSteps(completed);
-        }
-      })
-      .catch(console.error);
-  }, [memberId]);
-
-  if (!model) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-slate-950">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-red-400 mb-4">Model Not Found</h1>
-          <p className="text-slate-400 mb-6">The model &quot;{modelId}&quot; does not exist.</p>
-          <a href="/" className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition">
-            Back to Home
-          </a>
-        </div>
-      </div>
-    );
-  }
-
-  const totalSteps = model.steps.length; // 4 code steps
-  const isVivaStep = currentStep === totalSteps; // step index 4 = viva
-  const currentStepData: Step | null = !isVivaStep ? model.steps[currentStep] : null;
-
-  const handleStepComplete = (stepNumber: number) => {
-    setCompletedSteps(prev => [...new Set([...prev, stepNumber])]);
-  };
-
-  const existingForStep = (stepNum: number) =>
-    screenshots.filter(s => s.step_id === stepNum).map(s => ({
-      file_name: s.file_name,
-      pinata_url: s.pinata_url,
-      uploaded_at: s.uploaded_at,
-    }));
-
-  return (
-    <div className="flex min-h-screen bg-slate-950">
-      <Sidebar
-        currentStep={currentStep}
-        totalSteps={totalSteps}
-        modelName={model.modelName}
-        memberName={member?.memberName || memberId}
-        onStepClick={setCurrentStep}
-        completedSteps={completedSteps}
-      />
-
-      <main className="ml-72 flex-1 overflow-y-auto p-8 lg:p-12">
-        <div className="max-w-4xl mx-auto space-y-8">
-          {/* Model Header */}
-          <div className="mb-8">
-            <span className="inline-block px-3 py-1 bg-blue-600/20 text-blue-400 text-sm font-medium rounded-full mb-3">
-              {model.algorithmType}
-            </span>
-            <h1 className="text-3xl font-bold text-white mb-2">{model.modelName}</h1>
-            <p className="text-slate-400 text-lg">{model.modelDescription}</p>
-          </div>
-
-          {!isVivaStep && currentStepData ? (
-            <>
-              {/* Step Title */}
-              <h2 className="text-2xl font-bold text-white border-b border-slate-700 pb-4">
-                Step {currentStepData.stepNumber}: {currentStepData.title}
-              </h2>
-
-              {/* Explanation Card */}
-              <ExplanationCard
-                approach={currentStepData.approach}
-                whatToLookFor={currentStepData.whatToLookFor}
-                technicalNotes={currentStepData.technicalNotes}
-                commonMistakes={currentStepData.commonMistakes}
-                screenshotInstructions={currentStepData.screenshotInstructions}
-              />
-
-              {/* Code Block */}
-              <CodeBlock
-                code={currentStepData.code}
-                title={currentStepData.title}
-                stepNumber={currentStepData.stepNumber}
-              />
-
-              {/* Screenshot Upload */}
-              <ScreenshotUploader
-                memberId={memberId}
-                modelId={modelId}
-                stepNumber={currentStepData.stepNumber}
-                stepName={currentStepData.title.toLowerCase().replace(/[^a-z0-9]+/g, '_')}
-                existingScreenshots={existingForStep(currentStepData.stepNumber)}
-              />
-
-              {/* Navigation Buttons */}
-              <div className="flex justify-between pt-6 border-t border-slate-800">
-                <button
-                  onClick={() => setCurrentStep(prev => Math.max(0, prev - 1))}
-                  disabled={currentStep === 0}
-                  className="px-6 py-3 bg-slate-800 text-slate-300 rounded-lg hover:bg-slate-700 transition disabled:opacity-30 disabled:cursor-not-allowed"
-                >
-                  &larr; Previous Step
-                </button>
-                <button
-                  onClick={() => setCurrentStep(prev => Math.min(totalSteps, prev + 1))}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition"
-                >
-                  {currentStep === totalSteps - 1 ? 'Viva Prep →' : 'Next Step →'}
-                </button>
-              </div>
-            </>
-          ) : (
-            <>
-              <h2 className="text-2xl font-bold text-white border-b border-slate-700 pb-4">
-                Viva Preparation
-              </h2>
-              <VivaSection questions={model.vivaQuestions} />
-              <div className="pt-6 border-t border-slate-800">
-                <button
-                  onClick={() => setCurrentStep(totalSteps - 1)}
-                  className="px-6 py-3 bg-slate-800 text-slate-300 rounded-lg hover:bg-slate-700 transition"
-                >
-                  &larr; Back to Step 4
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      </main>
-    </div>
-  );
-}
-
+interface Shot { step_id:number; step_name:string; file_name:string; pinata_url:string; uploaded_at:string; }
 export default function GuidePage() {
-  return (
-    <Suspense fallback={
-      <div className="flex items-center justify-center h-screen bg-slate-950">
-        <div className="text-slate-400 text-lg">Loading guide...</div>
-      </div>
-    }>
-      <GuideContent />
-    </Suspense>
-  );
+ const params=useParams();
+ const model=getModelById(params.modelId as string);
+ return model?<Guide key={model.modelId} model={model}/>:<main className="p-10"><h1 className="text-2xl">Model not found</h1><Link href="/" className="mt-4 block text-blue-300">Back to guides</Link></main>;
+}
+function Guide({model}:{model:NonNullable<ReturnType<typeof getModelById>>}) {
+ const [currentStep,setCurrentStep]=useState(0);
+ const [screenshots,setScreenshots]=useState<Shot[]>([]);
+ useEffect(()=>{
+   let active=true;
+   fetch(`/api/screenshots?member_id=${encodeURIComponent(model.memberId)}`).then(r=>r.ok?r.json():[]).then(data=>{if(active&&Array.isArray(data))setScreenshots(data.filter((s:Shot)=>s.step_name?.startsWith('v3_')));}).catch(()=>{});
+   return ()=>{active=false;};
+ },[model.memberId]);
+ const total=model.steps.length;
+ const step=model.steps[currentStep];
+ const navigate=(i:number)=>{setCurrentStep(Math.max(0,Math.min(total,i)));window.scrollTo({top:0,behavior:'smooth'});};
+ const complete=(shot:Shot)=>setScreenshots(prev=>[...prev.filter(s=>s.step_id!==shot.step_id),shot]);
+ return <div>
+  <Sidebar currentStep={currentStep} stepTitles={model.steps.map(s=>s.title)} modelName={model.modelName} memberName={model.memberName} onStepClick={navigate} completedSteps={screenshots.map(s=>s.step_id)}/>
+  <main className="min-w-0 px-5 py-8 sm:px-8 lg:ml-72 lg:px-12 lg:py-12"><div className="mx-auto max-w-4xl">
+   <header className="mb-8 border-b border-slate-800 pb-7"><p className="text-sm text-blue-300">{model.studentId} · {model.algorithmType}</p><h1 className="mt-2 text-3xl font-bold">{model.modelName}</h1><p className="mt-3 text-slate-400">{model.modelDescription}</p><div className="mt-5 flex flex-wrap gap-3"><a download href={`/downloads/${model.modelId}.ipynb`} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium hover:bg-blue-500">Download your Colab notebook ↓</a><a download href="/downloads/colab-starter-files.zip" className="rounded-lg border border-slate-700 px-4 py-2 text-sm hover:bg-slate-800">Download the five CSV files ↓</a></div></header>
+   {step?<>
+    <p className="mb-2 text-sm text-slate-500">STEP {step.stepNumber} OF {total} · Run cells in order</p>
+    <h2 className="mb-6 text-2xl font-semibold">{step.title}</h2>
+    <ExplanationCard {...step}/>
+    <CodeBlock code={step.code} title={`Colab cell ${step.stepNumber}`} stepNumber={step.stepNumber}/>
+    <details className="my-6 rounded-xl border border-slate-800 p-4"><summary className="cursor-pointer text-sm text-slate-300">Upload your screenshot for this step</summary><ScreenshotUploader key={step.stepNumber} memberId={model.memberId} modelId={model.modelId} stepNumber={step.stepNumber} stepName={`v3_${step.stepNumber}`} existingScreenshots={screenshots.filter(s=>s.step_id===step.stepNumber)} onUploaded={complete}/></details>
+   </>:<><h2 className="text-2xl font-semibold">Viva preparation</h2><p className="mt-3 text-slate-400">Use your actual results and chosen settings when answering. Be ready to run and explain your own cells.</p><VivaSection questions={model.vivaQuestions}/></>}
+   <nav aria-label="Previous and next step" className="mt-8 flex justify-between gap-4 border-t border-slate-800 pt-6"><button onClick={()=>navigate(currentStep-1)} disabled={currentStep===0} className="rounded-lg bg-slate-800 px-5 py-3 text-sm disabled:opacity-30">← Previous</button>{currentStep<total?<button onClick={()=>navigate(currentStep+1)} className="rounded-lg bg-blue-600 px-5 py-3 text-sm hover:bg-blue-500">{currentStep===total-1?'Viva preparation':'Next step'} →</button>:<Link href="/compare" className="rounded-lg bg-blue-600 px-5 py-3 text-sm">Compare group results →</Link>}</nav>
+  </div></main>
+ </div>;
 }

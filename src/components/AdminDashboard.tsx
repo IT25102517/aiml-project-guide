@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import JSZip from 'jszip';
 
 interface Screenshot {
@@ -18,14 +18,7 @@ interface AdminDashboardProps {
   adminPassword?: string;
 }
 
-const members = [
-  { memberId: 'amarasekara', memberName: 'Amarasekara I.S.Y.', studentId: 'IT25101702', modelName: 'Ridge Regression' },
-  { memberId: 'indusara', memberName: 'Indusara L.G.S.', studentId: 'IT25102517', modelName: 'Gradient Boosting' },
-  { memberId: 'gunathilake', memberName: 'Gunathilake P.G.K.I.', studentId: 'IT25103600', modelName: 'Random Forest' },
-  { memberId: 'wijerathna', memberName: 'Wijerathna K.G.C.J.', studentId: 'IT25101522', modelName: 'Decision Tree' },
-  { memberId: 'bandara', memberName: 'Bandara U.S.B.N.', studentId: 'IT25103405', modelName: 'SVR' },
-  { memberId: 'wijesinghe', memberName: 'Wijesinghe W.A.D.M.C.L.', studentId: 'IT25100607', modelName: 'KNN' },
-];
+import { members, stepTitles } from '@/lib/models-data';
 
 export default function AdminDashboard({ adminPassword = 'admin' }: AdminDashboardProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -39,16 +32,11 @@ export default function AdminDashboard({ adminPassword = 'admin' }: AdminDashboa
     e.preventDefault();
     if (passwordInput === adminPassword) {
       setIsAuthenticated(true);
+      void fetchScreenshots();
     } else {
       alert('Incorrect password');
     }
   };
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchScreenshots();
-    }
-  }, [isAuthenticated]);
 
   const fetchScreenshots = async () => {
     setLoading(true);
@@ -56,7 +44,7 @@ export default function AdminDashboard({ adminPassword = 'admin' }: AdminDashboa
       const res = await fetch('/api/screenshots');
       if (res.ok) {
         const data = await res.json();
-        setScreenshots(data);
+        setScreenshots(Array.isArray(data) ? data.filter((s: Screenshot) => s.step_name?.startsWith('v3_')) : []);
       }
     } catch (err) {
       console.error('Failed to fetch screenshots', err);
@@ -69,10 +57,10 @@ export default function AdminDashboard({ adminPassword = 'admin' }: AdminDashboa
     return screenshots.find(s => s.member_id === memberId && s.step_id === stepId);
   };
 
-  const totalPossible = members.length * 4; // 4 steps
+  const totalPossible = members.length * stepTitles.length;
   const totalCompleted = members.reduce((sum, member) => {
     let completed = 0;
-    for(let i=1; i<=4; i++) {
+    for(let i=1; i<=stepTitles.length; i++) {
       if(getScreenshotForCell(member.memberId, i)) completed++;
     }
     return sum + completed;
@@ -88,6 +76,7 @@ export default function AdminDashboard({ adminPassword = 'admin' }: AdminDashboa
       const fetchPromises = screenshots.map(async (shot) => {
         try {
           const response = await fetch(shot.pinata_url);
+          if (!response.ok) throw new Error('Screenshot download failed');
           const blob = await response.blob();
           
           const member = members.find(m => m.memberId === shot.member_id);
@@ -150,7 +139,7 @@ export default function AdminDashboard({ adminPassword = 'admin' }: AdminDashboa
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-blue-400 mb-2">Project Completion Dashboard</h1>
+            <h1 className="text-3xl font-bold text-blue-400 mb-2">Screenshot Dashboard</h1>
             <p className="text-slate-400 font-medium">
               Overall Progress: <span className="text-emerald-400">{totalCompleted} / {totalPossible} steps completed</span>
             </p>
@@ -174,10 +163,7 @@ export default function AdminDashboard({ adminPassword = 'admin' }: AdminDashboa
                 <thead className="bg-slate-900/50 text-slate-300">
                   <tr>
                     <th className="px-6 py-4 font-semibold border-b border-slate-700">Team Member</th>
-                    <th className="px-6 py-4 font-semibold text-center border-b border-slate-700">Step 1</th>
-                    <th className="px-6 py-4 font-semibold text-center border-b border-slate-700">Step 2</th>
-                    <th className="px-6 py-4 font-semibold text-center border-b border-slate-700">Step 3</th>
-                    <th className="px-6 py-4 font-semibold text-center border-b border-slate-700">Step 4</th>
+                    {stepTitles.map((title,i) => <th key={title} title={title} className="px-6 py-4 font-semibold text-center border-b border-slate-700">Step {i+1}</th>)}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700/50">
@@ -187,7 +173,7 @@ export default function AdminDashboard({ adminPassword = 'admin' }: AdminDashboa
                         <div className="font-medium text-slate-200">{member.memberName}</div>
                         <div className="text-xs text-slate-500 mt-1">{member.studentId} • {member.modelName}</div>
                       </td>
-                      {[1, 2, 3, 4].map(stepNum => {
+                      {stepTitles.map((_, i) => i + 1).map(stepNum => {
                         const shot = getScreenshotForCell(member.memberId, stepNum);
                         return (
                           <td key={stepNum} className="px-6 py-4 text-center">
